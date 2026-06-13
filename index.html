@@ -356,7 +356,7 @@ function renderList(){
   const getKey = t => parseDate(t.start) || parseDate(t.due);
   const todayTasks   = rows.filter(t=>{ const d=getKey(t); return d&&d.getTime()===today.getTime()&&t.status!=='完了'; });
   const overdueTasks = rows.filter(t=>{ const d=getKey(t); return d&&d<today&&t.status!=='完了'; });
-  const futureTasks  = rows.filter(t=>{ const d=getKey(t); return !d||(d>today&&t.status!=='完了'); });
+  const futureTasks  = rows.filter(t=>{ const d=getKey(t); return !d||(d>today&&t.status!=='完了'); }).sort((a,b)=>{const da=getKey(a),db=getKey(b);if(!da&&!db)return 0;if(!da)return 1;if(!db)return -1;return da-db;});
   const doneTasks    = rows.filter(t=> t.status==='完了');
 
   let html='';
