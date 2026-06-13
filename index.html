@@ -108,6 +108,7 @@
       <thead><tr>
         <th onclick="sortBy('title')">タイトル <i class="ti ti-selector" style="font-size:11px"></i></th>
         <th onclick="sortBy('assignee')">担当者 <i class="ti ti-selector" style="font-size:11px"></i></th>
+        <th onclick="sortBy('start')">開始日 <i class="ti ti-selector" style="font-size:11px"></i></th>
         <th onclick="sortBy('due')">期限日 <i class="ti ti-selector" style="font-size:11px"></i></th>
         <th onclick="sortBy('priority')">優先度 <i class="ti ti-selector" style="font-size:11px"></i></th>
         <th onclick="sortBy('status')">ステータス <i class="ti ti-selector" style="font-size:11px"></i></th>
@@ -174,6 +175,16 @@ function parseDate(s){if(!s)return null;const d=new Date(s);d.setHours(0,0,0,0);
 function fmtDisp(s){return s?s.replace(/-/g,'/'):'—';}
 function daysFromToday(n){const d=new Date(today);d.setDate(d.getDate()+n);return d;}
 function getAssignees(){return[...new Set(tasks.map(t=>t.assignee).filter(Boolean))].sort();}
+
+// ====== 担当者カラーパレット ======
+const ASSIGNEE_COLORS = ['#4A90D9','#E8734A','#5BAD6F','#9B6FD4','#D4A017','#D45F8A','#3ABFBF','#8B6F47'];
+const assigneeColorMap = {};
+let colorIndex = 0;
+function assigneeColor(name){
+  if(!name) return '#ccc';
+  if(!assigneeColorMap[name]){ assigneeColorMap[name]=ASSIGNEE_COLORS[colorIndex%ASSIGNEE_COLORS.length]; colorIndex++; }
+  return assigneeColorMap[name];
+}
 
 // ====== 同期ステータス表示 ======
 function setSyncStatus(state, msg){
@@ -269,7 +280,7 @@ function getAssignees(){return[...new Set(tasks.map(t=>t.assignee).filter(Boolea
 function renderChips(){
   document.getElementById('assignee-chips').innerHTML=
     `<span class="chip${activeAssignee===''?' active':''}" onclick="setAssignee('')"><i class="ti ti-users" style="font-size:13px;vertical-align:-1px;margin-right:3px"></i>全員</span>`+
-    getAssignees().map(a=>`<span class="chip${activeAssignee===a?' active':''}" onclick="setAssignee('${a.replace(/'/g,"\\'")}')">${a}</span>`).join('');
+    getAssignees().map(a=>`<span class="chip${activeAssignee===a?' active':''}" onclick="setAssignee('${a.replace(/'/g,"\\'")}')" style="display:inline-flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:${assigneeColor(a)}"></span>${a}</span>`).join('');
   const dl=document.getElementById('assignee-list');
   if(dl) dl.innerHTML=getAssignees().map(a=>`<option value="${a}">`).join('');
 }
@@ -305,14 +316,18 @@ function renderStats(){
 function renderList(){
   const rows=getFiltered();
   document.getElementById('tbody').innerHTML=rows.length===0
-    ?`<tr><td colspan="6" class="empty"><i class="ti ti-mood-empty" style="font-size:24px;display:block;margin-bottom:6px"></i>タスクがありません</td></tr>`
+    ?`<tr><td colspan="7" class="empty"><i class="ti ti-mood-empty" style="font-size:24px;display:block;margin-bottom:6px"></i>タスクがありません</td></tr>`
     :rows.map(t=>{
       const d=parseDate(t.due),isOver=d&&d<today&&t.status!=='完了';
-      return `<tr>
-        <td style="max-width:180px"><div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${t.title}">${t.title}</div>
+      const aColor=assigneeColor(t.assignee);
+      return `<tr style="${t.status==='完了'?'opacity:0.4;':''}">
+        <td style="max-width:180px"><div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${t.title}">${t.status==='完了'?`<s>${t.title}</s>`:t.title}</div>
           ${t.desc?`<div style="font-size:12px;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;max-width:160px">${t.desc}</div>`:''}
         </td>
-        <td style="white-space:nowrap">${t.assignee||'—'}</td>
+        <td style="white-space:nowrap">
+          ${t.assignee?`<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:${aColor};flex-shrink:0"></span>${t.assignee}</span>`:'—'}
+        </td>
+        <td style="white-space:nowrap;color:var(--text-secondary)">${fmtDisp(t.start)}</td>
         <td style="white-space:nowrap" class="${isOver?'overdue':''}">${isOver?'⚠ ':''}${fmtDisp(t.due)}</td>
         <td><span class="badge ${PMAP[t.priority]||''}">${t.priority}</span></td>
         <td><select onchange="changeStatus('${t.notionId}',this.value)">
@@ -345,6 +360,7 @@ function renderGantt(){
     const s=parseDate(t.start||t.due),e=parseDate(t.due);
     const isOver=e&&e<today&&t.status!=='完了';
     const barClass=isOver?'overdue-bar':t.status==='完了'?'done':t.status==='進行中'?'doing':'todo';
+    const aBarColor=assigneeColor(t.assignee);
     html+=`<div class="g-label" onclick="openModal('${t.notionId}')" title="${t.title}">
       <span class="badge ${PMAP[t.priority]||''}" style="flex-shrink:0;font-size:10px;padding:1px 5px">${t.priority}</span>
       <span style="overflow:hidden;text-overflow:ellipsis">${t.title}</span>
