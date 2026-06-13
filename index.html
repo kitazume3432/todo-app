@@ -352,9 +352,11 @@ function renderList(){
     document.getElementById('tbody').innerHTML=`<tr><td colspan="7" class="empty"><i class="ti ti-mood-empty" style="font-size:24px;display:block;margin-bottom:6px"></i>タスクがありません</td></tr>`;
     return;
   }
-  const todayTasks   = rows.filter(t=>{ const d=parseDate(t.due); return d&&d.getTime()===today.getTime()&&t.status!=='完了'; });
-  const overdueTasks = rows.filter(t=>{ const d=parseDate(t.due); return d&&d<today&&t.status!=='完了'; });
-  const futureTasks  = rows.filter(t=>{ const d=parseDate(t.due); return !d||(d>today&&t.status!=='完了'); });
+  // 作業日（start）を優先、なければ期限日（due）で判定
+  const getKey = t => parseDate(t.start) || parseDate(t.due);
+  const todayTasks   = rows.filter(t=>{ const d=getKey(t); return d&&d.getTime()===today.getTime()&&t.status!=='完了'; });
+  const overdueTasks = rows.filter(t=>{ const d=getKey(t); return d&&d<today&&t.status!=='完了'; });
+  const futureTasks  = rows.filter(t=>{ const d=getKey(t); return !d||(d>today&&t.status!=='完了'); });
   const doneTasks    = rows.filter(t=> t.status==='完了');
 
   let html='';
