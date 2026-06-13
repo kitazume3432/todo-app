@@ -313,34 +313,68 @@ function renderStats(){
     <div class="stat-card"><div class="stat-label">期限超過</div><div class="stat-num" style="color:${over>0?'#A32D2D':'inherit'}">${over}</div></div>`;
 }
 
+function taskRow(t){
+  const d=parseDate(t.due),isOver=d&&d<today&&t.status!=='完了';
+  const aColor=assigneeColor(t.assignee);
+  return `<tr style="${t.status==='完了'?'opacity:0.4;':''}">
+    <td style="max-width:180px"><div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${t.title}">${t.status==='完了'?`<s>${t.title}</s>`:t.title}</div>
+      ${t.desc?`<div style="font-size:12px;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;max-width:160px">${t.desc}</div>`:''}
+    </td>
+    <td style="white-space:nowrap">
+      ${t.assignee?`<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:${aColor};flex-shrink:0"></span>${t.assignee}</span>`:'—'}
+    </td>
+    <td style="white-space:nowrap;color:var(--text-secondary)">${fmtDisp(t.start)}</td>
+    <td style="white-space:nowrap" class="${isOver?'overdue':''}">${isOver?'⚠ ':''}${fmtDisp(t.due)}</td>
+    <td><span class="badge ${PMAP[t.priority]||''}">${t.priority}</span></td>
+    <td><select onchange="changeStatus('${t.notionId}',this.value)">
+      <option ${t.status==='未着手'?'selected':''}>未着手</option>
+      <option ${t.status==='進行中'?'selected':''}>進行中</option>
+      <option ${t.status==='完了'?'selected':''}>完了</option>
+    </select></td>
+    <td style="white-space:nowrap">
+      <button class="icon-btn" onclick="openModal('${t.notionId}')"><i class="ti ti-edit"></i></button>
+      <button class="icon-btn" onclick="deleteTask('${t.notionId}')"><i class="ti ti-trash"></i></button>
+    </td>
+  </tr>`;
+}
+
+function sectionHeader(label, count, color){
+  return `<tr>
+    <td colspan="7" style="padding:10px 10px 6px;font-size:12px;font-weight:600;color:${color};background:var(--bg);border-bottom:2px solid ${color};letter-spacing:0.05em">
+      ${label} <span style="font-weight:400;opacity:0.7">(${count})</span>
+    </td>
+  </tr>`;
+}
+
 function renderList(){
   const rows=getFiltered();
-  document.getElementById('tbody').innerHTML=rows.length===0
-    ?`<tr><td colspan="7" class="empty"><i class="ti ti-mood-empty" style="font-size:24px;display:block;margin-bottom:6px"></i>タスクがありません</td></tr>`
-    :rows.map(t=>{
-      const d=parseDate(t.due),isOver=d&&d<today&&t.status!=='完了';
-      const aColor=assigneeColor(t.assignee);
-      return `<tr style="${t.status==='完了'?'opacity:0.4;':''}">
-        <td style="max-width:180px"><div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${t.title}">${t.status==='完了'?`<s>${t.title}</s>`:t.title}</div>
-          ${t.desc?`<div style="font-size:12px;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;max-width:160px">${t.desc}</div>`:''}
-        </td>
-        <td style="white-space:nowrap">
-          ${t.assignee?`<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:${aColor};flex-shrink:0"></span>${t.assignee}</span>`:'—'}
-        </td>
-        <td style="white-space:nowrap;color:var(--text-secondary)">${fmtDisp(t.start)}</td>
-        <td style="white-space:nowrap" class="${isOver?'overdue':''}">${isOver?'⚠ ':''}${fmtDisp(t.due)}</td>
-        <td><span class="badge ${PMAP[t.priority]||''}">${t.priority}</span></td>
-        <td><select onchange="changeStatus('${t.notionId}',this.value)">
-          <option ${t.status==='未着手'?'selected':''}>未着手</option>
-          <option ${t.status==='進行中'?'selected':''}>進行中</option>
-          <option ${t.status==='完了'?'selected':''}>完了</option>
-        </select></td>
-        <td style="white-space:nowrap">
-          <button class="icon-btn" onclick="openModal('${t.notionId}')"><i class="ti ti-edit"></i></button>
-          <button class="icon-btn" onclick="deleteTask('${t.notionId}')"><i class="ti ti-trash"></i></button>
-        </td>
-      </tr>`;
-    }).join('');
+  if(rows.length===0){
+    document.getElementById('tbody').innerHTML=`<tr><td colspan="7" class="empty"><i class="ti ti-mood-empty" style="font-size:24px;display:block;margin-bottom:6px"></i>タスクがありません</td></tr>`;
+    return;
+  }
+  const todayTasks   = rows.filter(t=>{ const d=parseDate(t.due); return d&&d.getTime()===today.getTime()&&t.status!=='完了'; });
+  const overdueTasks = rows.filter(t=>{ const d=parseDate(t.due); return d&&d<today&&t.status!=='完了'; });
+  const futureTasks  = rows.filter(t=>{ const d=parseDate(t.due); return !d||(d>today&&t.status!=='完了'); });
+  const doneTasks    = rows.filter(t=> t.status==='完了');
+
+  let html='';
+  if(overdueTasks.length){
+    html += sectionHeader('⚠ 期限超過', overdueTasks.length, '#A32D2D');
+    html += overdueTasks.map(taskRow).join('');
+  }
+  if(todayTasks.length){
+    html += sectionHeader('📅 今日', todayTasks.length, '#1A6FD4');
+    html += todayTasks.map(taskRow).join('');
+  }
+  if(futureTasks.length){
+    html += sectionHeader('📋 今後の予定', futureTasks.length, 'var(--text-secondary)');
+    html += futureTasks.map(taskRow).join('');
+  }
+  if(doneTasks.length){
+    html += sectionHeader('✓ 完了', doneTasks.length, '#3B6D11');
+    html += doneTasks.map(taskRow).join('');
+  }
+  document.getElementById('tbody').innerHTML = html;
 }
 
 function renderGantt(){
