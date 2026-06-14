@@ -47,7 +47,8 @@
   table{width:100%;border-collapse:collapse;font-size:14px}
   thead th{text-align:left;padding:8px 10px;font-size:12px;font-weight:500;color:var(--text-secondary);border-bottom:0.5px solid var(--border);cursor:pointer;user-select:none;white-space:nowrap}
   thead th:hover{color:var(--text)}
-  tbody tr{border-bottom:0.5px solid var(--border)} tbody tr:hover{background:var(--bg-secondary)}
+  tbody tr:hover{background:var(--bg-secondary);background-color:var(--bg-secondary)}
+  tbody tr[style*="cursor:pointer"]:hover td{background:var(--bg-secondary)}
   tbody td{padding:8px 10px;vertical-align:middle}
   .badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:var(--radius-md);font-weight:500}
   .p-high{background:#FAECE7;color:#993C1D} .p-mid{background:#FAEEDA;color:#854F0B} .p-low{background:#EAF3DE;color:#3B6D11}
@@ -377,14 +378,14 @@ function renderStats(){
 function taskRow(t){
   const d=parseDate(t.due),isOver=d&&d<today&&t.status!=='完了';
   const aColor=assigneeColor(t.assignee);
-  return `<tr style="${t.status==='完了'?'opacity:0.4;':''}">
+  return `<tr style="cursor:pointer;${t.status==='完了'?'opacity:0.4;':''}" onclick="handleRowClick(event,'${t.notionId}')">
     <td style="max-width:180px"><div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${t.title}">${t.status==='完了'?`<s>${t.title}</s>`:t.title}</div>
       ${t.desc?`<div style="font-size:12px;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;max-width:160px">${t.desc}</div>`:''}
     </td>
     <td style="white-space:nowrap">
       ${t.assignee?`<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:${aColor};flex-shrink:0"></span>${t.assignee}</span>`:'—'}
     </td>
-    <td><select onchange="changeStatus('${t.notionId}',this.value)">
+    <td onclick="event.stopPropagation()"><select onchange="changeStatus('${t.notionId}',this.value)">
       <option ${t.status==='未着手'?'selected':''}>未着手</option>
       <option ${t.status==='進行中'?'selected':''}>進行中</option>
       <option ${t.status==='完了'?'selected':''}>完了</option>
@@ -392,9 +393,8 @@ function taskRow(t){
     <td style="white-space:nowrap;color:var(--text-secondary)">${fmtDisp(t.start)}</td>
     <td style="white-space:nowrap" class="${isOver?'overdue':''}">${isOver?'⚠ ':''}${fmtDisp(t.due)}</td>
     <td><span class="badge ${PMAP[t.priority]||''}">${t.priority}</span></td>
-    <td style="white-space:nowrap">
-      <button class="icon-btn" onclick="openModal('${t.notionId}')"><i class="ti ti-edit"></i></button>
-      <button class="icon-btn" onclick="deleteTask('${t.notionId}')"><i class="ti ti-trash"></i></button>
+    <td onclick="event.stopPropagation()">
+      <button class="icon-btn" onclick="deleteTask('${t.notionId}')" aria-label="削除"><i class="ti ti-trash"></i></button>
     </td>
   </tr>`;
 }
@@ -474,6 +474,11 @@ function renderGantt(){
   });
   html+='</div>';
   document.getElementById('gantt-wrap').innerHTML=html;
+}
+
+function handleRowClick(event, notionId){
+  if(event.target.closest('select')||event.target.closest('button')) return;
+  openModal(notionId);
 }
 
 function render(){renderStats();renderChips();renderList();renderGantt();}
