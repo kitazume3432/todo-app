@@ -64,6 +64,21 @@
   .form-row input,.form-row select,.form-row textarea{width:100%} .form-row textarea{height:64px}
   .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:1rem}
+  .status-radio{display:flex;align-items:center;justify-content:center;gap:5px;padding:7px 4px;border-radius:var(--radius-md);border:0.5px solid var(--border-hover);cursor:pointer;font-size:13px;transition:background 0.1s}
+  .status-radio:has(input:checked){background:var(--bg-secondary);border-color:var(--text-secondary);font-weight:500}
+  .status-radio input{display:none}
+  .priority-radio{display:flex;align-items:center;justify-content:center;gap:4px;padding:7px 4px;border-radius:var(--radius-md);border:0.5px solid var(--border-hover);cursor:pointer;font-size:13px}
+  .priority-radio input{display:none}
+  .p-radio-high:has(input:checked){background:#FAECE7;border-color:#993C1D;color:#993C1D;font-weight:500}
+  .p-radio-mid:has(input:checked){background:#FAEEDA;border-color:#854F0B;color:#854F0B;font-weight:500}
+  .p-radio-low:has(input:checked){background:#EAF3DE;border-color:#3B6D11;color:#3B6D11;font-weight:500}
+  .date-quick{background:none;border:0.5px solid var(--border-hover);border-radius:99px;padding:2px 8px;font-size:11px;cursor:pointer;color:var(--text-secondary);font-family:var(--font)}
+  .date-quick:hover{background:var(--bg-secondary);color:var(--text)}
+  .fab{position:fixed;bottom:28px;right:28px;width:56px;height:56px;border-radius:50%;background:#1A6FD4;color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 4px 16px rgba(26,111,212,0.45);z-index:50;transition:transform 0.15s,box-shadow 0.15s}
+  .fab:hover{transform:scale(1.08);box-shadow:0 6px 20px rgba(26,111,212,0.55)}
+  .fab:active{transform:scale(0.96)}
+  .fab-label{position:fixed;bottom:36px;right:92px;background:var(--bg);border:0.5px solid var(--border-hover);border-radius:var(--radius-md);padding:6px 12px;font-size:13px;color:var(--text);white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.1);z-index:50;opacity:0;pointer-events:none;transition:opacity 0.2s}
+  .fab:hover ~ .fab-label, .fab-label:hover{opacity:1}
   .gantt-wrap{overflow-x:auto}
   .g-label{font-size:13px;padding:6px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:0.5px solid var(--border);display:flex;align-items:center;gap:6px;cursor:pointer}
   .g-cell{border-bottom:0.5px solid var(--border);position:relative;height:36px}
@@ -102,16 +117,15 @@
       <input type="text" id="search" placeholder="タスクを検索...">
       <select id="filter-status"><option value="">すべてのステータス</option><option>未着手</option><option>進行中</option><option>完了</option></select>
       <select id="filter-priority"><option value="">すべての優先度</option><option>高</option><option>中</option><option>低</option></select>
-      <button class="btn" onclick="openModal()"><i class="ti ti-plus"></i>タスク追加</button>
     </div>
     <table>
       <thead><tr>
         <th onclick="sortBy('title')">タイトル <i class="ti ti-selector" style="font-size:11px"></i></th>
         <th onclick="sortBy('assignee')">担当者 <i class="ti ti-selector" style="font-size:11px"></i></th>
+        <th onclick="sortBy('status')">ステータス <i class="ti ti-selector" style="font-size:11px"></i></th>
         <th onclick="sortBy('start')">作業日 <i class="ti ti-selector" style="font-size:11px"></i></th>
         <th onclick="sortBy('due')">期限日 <i class="ti ti-selector" style="font-size:11px"></i></th>
         <th onclick="sortBy('priority')">優先度 <i class="ti ti-selector" style="font-size:11px"></i></th>
-        <th onclick="sortBy('status')">ステータス <i class="ti ti-selector" style="font-size:11px"></i></th>
         <th></th>
       </tr></thead>
       <tbody id="tbody"></tbody>
@@ -119,7 +133,6 @@
   </div>
   <div id="gantt-view" style="display:none">
     <div class="g-nav">
-      <button class="btn" onclick="openModal()" style="margin-right:auto"><i class="ti ti-plus"></i>タスク追加</button>
       <button class="icon-btn" onclick="shiftGantt(-14)"><i class="ti ti-chevron-left"></i></button>
       <span id="gantt-range" style="min-width:160px;text-align:center;font-size:13px;color:var(--text-secondary)"></span>
       <button class="icon-btn" onclick="shiftGantt(14)"><i class="ti ti-chevron-right"></i></button>
@@ -139,24 +152,72 @@
 <!-- Modal -->
 <div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
   <div class="modal" onclick="event.stopPropagation()">
-    <h2 id="modal-title">タスクを追加</h2>
-    <div class="form-row"><label>タイトル</label><input type="text" id="m-title" placeholder="タスクのタイトル"></div>
-    <div class="form-row"><label>説明</label><textarea id="m-desc" placeholder="詳細や備考"></textarea></div>
-    <div class="form-row"><label>担当者</label><input type="text" id="m-assignee" list="assignee-list" placeholder="例：田中 花子"><datalist id="assignee-list"></datalist></div>
-    <div class="form-grid">
-      <div class="form-row"><label>作業日</label><input type="date" id="m-start"></div>
-      <div class="form-row"><label>期限日</label><input type="date" id="m-due"></div>
+    <h2 id="modal-title">✏️ タスクを追加</h2>
+
+    <div class="form-row">
+      <label>📝 タイトル <span style="color:#A32D2D">*</span></label>
+      <input type="text" id="m-title" placeholder="例：資料作成、ミーティング準備など">
     </div>
-    <div class="form-grid">
-      <div class="form-row"><label>優先度</label><select id="m-priority"><option>高</option><option>中</option><option>低</option></select></div>
-      <div class="form-row"><label>ステータス</label><select id="m-status"><option>未着手</option><option>進行中</option><option>完了</option></select></div>
+
+    <div class="form-row">
+      <label>💬 説明・メモ</label>
+      <textarea id="m-desc" placeholder="詳細や備考があれば入力"></textarea>
     </div>
+
+    <div class="form-row">
+      <label>👤 担当者</label>
+      <input type="text" id="m-assignee" list="assignee-list" placeholder="名前を入力（過去の担当者から選べます）">
+      <datalist id="assignee-list"></datalist>
+    </div>
+
+    <div class="form-row">
+      <label>🔖 ステータス</label>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:2px">
+        <label class="status-radio" id="sr-todo"><input type="radio" name="m-status-r" value="未着手" checked> 未着手</label>
+        <label class="status-radio" id="sr-doing"><input type="radio" name="m-status-r" value="進行中"> 進行中</label>
+        <label class="status-radio" id="sr-done"><input type="radio" name="m-status-r" value="完了"> 完了</label>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="form-row">
+        <label>📅 作業日</label>
+        <input type="date" id="m-start">
+        <div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">
+          <button type="button" class="date-quick" onclick="setDateQuick('m-start',0)">今日</button>
+          <button type="button" class="date-quick" onclick="setDateQuick('m-start',1)">明日</button>
+          <button type="button" class="date-quick" onclick="setDateQuick('m-start',7)">1週間後</button>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>⏰ 期限日</label>
+        <input type="date" id="m-due">
+        <div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">
+          <button type="button" class="date-quick" onclick="setDateQuick('m-due',0)">今日</button>
+          <button type="button" class="date-quick" onclick="setDateQuick('m-due',1)">明日</button>
+          <button type="button" class="date-quick" onclick="setDateQuick('m-due',7)">1週間後</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label>🚦 優先度</label>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:2px">
+        <label class="priority-radio p-radio-high" id="pr-high"><input type="radio" name="m-priority-r" value="高"> 🔴 高</label>
+        <label class="priority-radio p-radio-mid"  id="pr-mid" ><input type="radio" name="m-priority-r" value="中" checked> 🟡 中</label>
+        <label class="priority-radio p-radio-low"  id="pr-low" ><input type="radio" name="m-priority-r" value="低"> 🟢 低</label>
+      </div>
+    </div>
+
     <div class="modal-actions">
       <button class="btn" onclick="closeModal()">キャンセル</button>
-      <button class="btn" onclick="saveTask()">保存</button>
+      <button class="btn" style="background:var(--bg-secondary);font-weight:500" onclick="saveTask()">💾 保存する</button>
     </div>
   </div>
 </div>
+
+<button class="fab" onclick="openModal()" aria-label="タスクを追加"><i class="ti ti-plus" aria-hidden="true"></i></button>
+<div class="fab-label">タスクを追加</div>
 
 <div class="saving-overlay" id="saving-overlay">
   <div class="saving-box"><i class="ti ti-loader" style="animation:pulse 1s infinite;margin-right:6px"></i>Notionに保存中...</div>
@@ -323,14 +384,14 @@ function taskRow(t){
     <td style="white-space:nowrap">
       ${t.assignee?`<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:${aColor};flex-shrink:0"></span>${t.assignee}</span>`:'—'}
     </td>
-    <td style="white-space:nowrap;color:var(--text-secondary)">${fmtDisp(t.start)}</td>
-    <td style="white-space:nowrap" class="${isOver?'overdue':''}">${isOver?'⚠ ':''}${fmtDisp(t.due)}</td>
-    <td><span class="badge ${PMAP[t.priority]||''}">${t.priority}</span></td>
     <td><select onchange="changeStatus('${t.notionId}',this.value)">
       <option ${t.status==='未着手'?'selected':''}>未着手</option>
       <option ${t.status==='進行中'?'selected':''}>進行中</option>
       <option ${t.status==='完了'?'selected':''}>完了</option>
     </select></td>
+    <td style="white-space:nowrap;color:var(--text-secondary)">${fmtDisp(t.start)}</td>
+    <td style="white-space:nowrap" class="${isOver?'overdue':''}">${isOver?'⚠ ':''}${fmtDisp(t.due)}</td>
+    <td><span class="badge ${PMAP[t.priority]||''}">${t.priority}</span></td>
     <td style="white-space:nowrap">
       <button class="icon-btn" onclick="openModal('${t.notionId}')"><i class="ti ti-edit"></i></button>
       <button class="icon-btn" onclick="deleteTask('${t.notionId}')"><i class="ti ti-trash"></i></button>
@@ -450,31 +511,43 @@ function switchTab(tab,el){
   if(tab==='gantt')renderGantt();
 }
 
+function setDateQuick(id, days){
+  const d = new Date(today); d.setDate(d.getDate()+days);
+  document.getElementById(id).value = d.toISOString().slice(0,10);
+}
+
 function openModal(notionId){
   editId=notionId||null;
   const t=notionId?tasks.find(t=>t.notionId===notionId):{};
-  document.getElementById('modal-title').textContent=notionId?'タスクを編集':'タスクを追加';
+  document.getElementById('modal-title').textContent=notionId?'✏️ タスクを編集':'✏️ タスクを追加';
   document.getElementById('m-title').value=t.title||'';
   document.getElementById('m-desc').value=t.desc||'';
   document.getElementById('m-assignee').value=t.assignee||'';
   document.getElementById('m-start').value=t.start||'';
   document.getElementById('m-due').value=t.due||'';
-  document.getElementById('m-priority').value=t.priority||'高';
-  document.getElementById('m-status').value=t.status||'未着手';
+  // ステータス
+  const status=t.status||'未着手';
+  document.querySelectorAll('input[name="m-status-r"]').forEach(r=>r.checked=(r.value===status));
+  // 優先度
+  const priority=t.priority||'中';
+  document.querySelectorAll('input[name="m-priority-r"]').forEach(r=>r.checked=(r.value===priority));
   const dl=document.getElementById('assignee-list');
   dl.innerHTML=getAssignees().map(a=>`<option value="${a}">`).join('');
   document.getElementById('modal-overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('m-title').focus(),100);
 }
 function closeModal(){document.getElementById('modal-overlay').classList.remove('open');}
 
 async function saveTask(){
   const title=document.getElementById('m-title').value.trim();
-  if(!title){alert('タイトルを入力してください');return;}
+  if(!title){alert('タイトルを入力してください');document.getElementById('m-title').focus();return;}
+  const statusEl=document.querySelector('input[name="m-status-r"]:checked');
+  const priorityEl=document.querySelector('input[name="m-priority-r"]:checked');
   const data={
     title,desc:document.getElementById('m-desc').value.trim(),
     assignee:document.getElementById('m-assignee').value.trim(),
     start:document.getElementById('m-start').value,due:document.getElementById('m-due').value,
-    priority:document.getElementById('m-priority').value,status:document.getElementById('m-status').value,
+    priority:priorityEl?priorityEl.value:'中',status:statusEl?statusEl.value:'未着手',
   };
   closeModal();
   document.getElementById('saving-overlay').classList.add('show');
