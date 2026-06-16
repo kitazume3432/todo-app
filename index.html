@@ -415,10 +415,12 @@ function renderList(){
   }
   // 作業日（start）を優先、なければ期限日（due）で判定
   const getKey = t => parseDate(t.start) || parseDate(t.due);
-  const todayTasks   = rows.filter(t=>{ const d=getKey(t); return d&&d.getTime()===today.getTime()&&t.status!=='完了'; });
-  const overdueTasks = rows.filter(t=>{ const d=getKey(t); return d&&d<today&&t.status!=='完了'; });
-  const futureTasks  = rows.filter(t=>{ const d=getKey(t); return !d||(d>today&&t.status!=='完了'); }).sort((a,b)=>{const da=getKey(a),db=getKey(b);if(!da&&!db)return 0;if(!da)return 1;if(!db)return -1;return da-db;});
-  const doneTasks    = rows.filter(t=> t.status==='完了');
+  const tomorrow = daysFromToday(1);
+  const todayTasks    = rows.filter(t=>{ const d=getKey(t); return d&&d.getTime()===today.getTime()&&t.status!=='完了'; });
+  const tomorrowTasks = rows.filter(t=>{ const d=getKey(t); return d&&d.getTime()===tomorrow.getTime()&&t.status!=='完了'; });
+  const overdueTasks  = rows.filter(t=>{ const d=getKey(t); return d&&d<today&&t.status!=='完了'; });
+  const futureTasks   = rows.filter(t=>{ const d=getKey(t); return !d||(d>tomorrow&&t.status!=='完了'); }).sort((a,b)=>{const da=getKey(a),db=getKey(b);if(!da&&!db)return 0;if(!da)return 1;if(!db)return -1;return da-db;});
+  const doneTasks     = rows.filter(t=> t.status==='完了');
 
   let html='';
   if(overdueTasks.length){
@@ -428,6 +430,10 @@ function renderList(){
   if(todayTasks.length){
     html += sectionHeader('📅 今日', todayTasks.length, '#1A6FD4');
     html += todayTasks.map(taskRow).join('');
+  }
+  if(tomorrowTasks.length){
+    html += sectionHeader('🌅 明日', tomorrowTasks.length, '#5B9BD5');
+    html += tomorrowTasks.map(taskRow).join('');
   }
   if(futureTasks.length){
     html += sectionHeader('📋 今後の予定', futureTasks.length, 'var(--text-secondary)');
@@ -518,7 +524,8 @@ function switchTab(tab,el){
 
 function setDateQuick(id, days){
   const d = new Date(today); d.setDate(d.getDate()+days);
-  document.getElementById(id).value = d.toISOString().slice(0,10);
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+  document.getElementById(id).value = `${y}-${m}-${day}`;
 }
 
 function openModal(notionId){
