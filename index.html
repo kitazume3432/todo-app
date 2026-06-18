@@ -451,7 +451,11 @@ function renderGantt(){
   const startD=daysFromToday(-7+ganttOffset),endD=daysFromToday(-7+ganttOffset+DAYS-1);
   document.getElementById('gantt-range').textContent=`${startD.getMonth()+1}/${startD.getDate()} — ${endD.getMonth()+1}/${endD.getDate()}`;
   const cols=Array.from({length:DAYS},(_,i)=>{const d=new Date(startD);d.setDate(d.getDate()+i);return d;});
-  const rows=getFiltered().sort((a,b)=>(a.start||a.due||'').localeCompare(b.start||b.due||''));
+  const rows=getFiltered().sort((a,b)=>{
+    const aDone=a.status==='完了', bDone=b.status==='完了';
+    if(aDone!==bDone) return aDone?1:-1;
+    return (a.start||a.due||'').localeCompare(b.start||b.due||'');
+  });
   let html=`<div style="display:grid;grid-template-columns:${LABEL_W}px repeat(${DAYS},${COL_W}px);min-width:${LABEL_W+DAYS*COL_W}px">`;
   html+=`<div style="font-size:11px;color:var(--text-secondary);padding:4px 8px;border-bottom:0.5px solid var(--border)">タスク</div>`;
   cols.forEach(d=>{
