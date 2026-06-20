@@ -57,14 +57,17 @@
   .overdue{color:#A32D2D;font-weight:500}
   .empty{text-align:center;padding:2rem;color:var(--text-secondary);font-size:14px}
   td select{height:28px;font-size:12px;padding:2px 6px;border-radius:var(--radius-md)}
-  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:100;align-items:flex-start;justify-content:center;padding-top:60px}
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:100;align-items:center;justify-content:center;padding:24px 16px}
   .modal-overlay.open{display:flex}
-  .modal{background:var(--bg);border-radius:var(--radius-lg);border:0.5px solid var(--border);padding:1.25rem;width:360px;max-width:calc(100vw - 32px)}
-  .modal h2{font-size:15px;font-weight:500;margin-bottom:1rem}
+  .modal{background:var(--bg);border-radius:var(--radius-lg);border:0.5px solid var(--border);width:360px;max-width:calc(100vw - 32px);max-height:calc(100vh - 48px);display:flex;flex-direction:column;overflow:hidden}
+  .modal-header{padding:1.25rem 1.25rem 0.5rem;flex-shrink:0}
+  .modal-header h2{font-size:15px;font-weight:500}
+  .modal-body{padding:0 1.25rem 1rem;overflow-y:auto;flex:1;min-height:0}
+  .modal-footer{padding:0.75rem 1.25rem 1.25rem;flex-shrink:0;border-top:0.5px solid var(--border);background:var(--bg)}
   .form-row{margin-bottom:10px} .form-row label{display:block;font-size:12px;color:var(--text-secondary);margin-bottom:4px}
   .form-row input,.form-row select,.form-row textarea{width:100%} .form-row textarea{height:64px}
   .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-  .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:1rem}
+  .modal-actions{display:flex;gap:8px;justify-content:flex-end}
   .status-radio{display:flex;align-items:center;justify-content:center;gap:5px;padding:7px 4px;border-radius:var(--radius-md);border:0.5px solid var(--border-hover);cursor:pointer;font-size:13px;transition:background 0.1s}
   .status-radio:has(input:checked){background:var(--bg-secondary);border-color:var(--text-secondary);font-weight:500}
   .status-radio input{display:none}
@@ -153,7 +156,8 @@
 <!-- Modal -->
 <div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
   <div class="modal" onclick="event.stopPropagation()">
-    <h2 id="modal-title">✏️ タスクを追加</h2>
+    <div class="modal-header"><h2 id="modal-title">✏️ タスクを追加</h2></div>
+    <div class="modal-body">
 
     <div class="form-row">
       <label>📝 タイトル <span style="color:#A32D2D">*</span></label>
@@ -164,6 +168,7 @@
       <label>💬 説明・メモ</label>
       <textarea id="m-desc" placeholder="詳細や備考があれば入力"></textarea>
     </div>
+
 
     <div class="form-row">
       <label>👤 担当者</label>
@@ -210,9 +215,53 @@
       </div>
     </div>
 
-    <div class="modal-actions">
-      <button class="btn" onclick="closeModal()">キャンセル</button>
-      <button class="btn" style="background:var(--bg-secondary);font-weight:500" onclick="saveTask()">💾 保存する</button>
+    <div class="form-row">
+      <label>🔁 繰り返し</label>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:2px">
+        <label class="status-radio" id="rr-none"><input type="radio" name="m-recur-r" value="なし" checked onchange="updateRecurDetail()"> なし</label>
+        <label class="status-radio" id="rr-daily"><input type="radio" name="m-recur-r" value="毎日" onchange="updateRecurDetail()"> 毎日</label>
+        <label class="status-radio" id="rr-weekly"><input type="radio" name="m-recur-r" value="毎週" onchange="updateRecurDetail()"> 毎週</label>
+        <label class="status-radio" id="rr-monthly"><input type="radio" name="m-recur-r" value="毎月" onchange="updateRecurDetail()"> 毎月</label>
+        <label class="status-radio" id="rr-monthly-nth"><input type="radio" name="m-recur-r" value="毎月第◯曜日" onchange="updateRecurDetail()"> 毎月第◯◯曜</label>
+        <label class="status-radio" id="rr-yearly-nth"><input type="radio" name="m-recur-r" value="毎年第◯曜日" onchange="updateRecurDetail()"> 毎年◯月第◯◯曜</label>
+      </div>
+
+      <div id="recur-detail-week" style="display:none;margin-top:8px">
+        <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">第何週</label>
+        <select id="m-recur-week" style="width:100%">
+          <option value="1">第1</option><option value="2">第2</option><option value="3">第3</option>
+          <option value="4">第4</option><option value="5">第5</option><option value="-1">最終</option>
+        </select>
+      </div>
+
+      <div id="recur-detail-weekday" style="display:none;margin-top:8px">
+        <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">曜日</label>
+        <select id="m-recur-weekday" style="width:100%">
+          <option value="0">日曜日</option><option value="1">月曜日</option><option value="2">火曜日</option>
+          <option value="3">水曜日</option><option value="4">木曜日</option><option value="5">金曜日</option>
+          <option value="6">土曜日</option>
+        </select>
+      </div>
+
+      <div id="recur-detail-month" style="display:none;margin-top:8px">
+        <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">月</label>
+        <select id="m-recur-month" style="width:100%">
+          <option value="1">1月</option><option value="2">2月</option><option value="3">3月</option>
+          <option value="4">4月</option><option value="5">5月</option><option value="6">6月</option>
+          <option value="7">7月</option><option value="8">8月</option><option value="9">9月</option>
+          <option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
+        </select>
+      </div>
+
+      <div style="font-size:11px;color:var(--text-secondary);margin-top:4px">完了にすると自動で次回分のタスクが作成されます</div>
+    </div>
+
+    </div>
+    <div class="modal-footer">
+      <div class="modal-actions">
+        <button class="btn" onclick="closeModal()">キャンセル</button>
+        <button class="btn" style="background:var(--bg-secondary);font-weight:500" onclick="saveTask()">💾 保存する</button>
+      </div>
     </div>
   </div>
 </div>
@@ -288,6 +337,10 @@ function pageToTask(page){
     due: getProp('期限日','date'),
     priority: getProp('優先度','select')||'中',
     status: getProp('ステータス','select')||'未着手',
+    recur: getProp('繰り返し','select')||'なし',
+    recurWeekday: getProp('繰り返し曜日','rich_text'),
+    recurMonth: getProp('繰り返し月','rich_text'),
+    recurWeek: getProp('繰り返し週','rich_text'),
   };
 }
 
@@ -333,7 +386,84 @@ function buildProperties(data){
     '期限日':{date:data.due?{start:data.due}:null},
     '優先度':{select:data.priority?{name:data.priority}:null},
     'ステータス':{select:data.status?{name:data.status}:null},
+    '繰り返し':{select:{name:data.recur||'なし'}},
+    '繰り返し曜日':{rich_text:[{text:{content:data.recurWeekday!=null?String(data.recurWeekday):''}}]},
+    '繰り返し月':{rich_text:[{text:{content:data.recurMonth!=null?String(data.recurMonth):''}}]},
+    '繰り返し週':{rich_text:[{text:{content:data.recurWeek!=null?String(data.recurWeek):''}}]},
   };
+}
+
+// 指定した年月の「第n◯曜日」を返す（n=-1で最終週）
+function nthWeekdayOfMonth(year, month, weekday, week){
+  if(week === -1){
+    const lastDay = new Date(year, month, 0);
+    const lastDow = lastDay.getDay();
+    let diff = lastDow - weekday;
+    if(diff < 0) diff += 7;
+    lastDay.setDate(lastDay.getDate() - diff);
+    lastDay.setHours(0,0,0,0);
+    return lastDay;
+  }
+  const firstDay = new Date(year, month-1, 1);
+  const firstDow = firstDay.getDay();
+  let diff = weekday - firstDow;
+  if(diff < 0) diff += 7;
+  const day = 1 + diff + (week-1)*7;
+  const result = new Date(year, month-1, day);
+  result.setHours(0,0,0,0);
+  return result;
+}
+
+function fmtYMD(d){
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+
+// ====== 繰り返し日付の計算 ======
+function addInterval(dateStr, recur, opts={}){
+  if(!dateStr) return '';
+  const d = new Date(dateStr); d.setHours(0,0,0,0);
+  if(recur==='毎日'){ d.setDate(d.getDate()+1); return fmtYMD(d); }
+  if(recur==='毎週'){ d.setDate(d.getDate()+7); return fmtYMD(d); }
+  if(recur==='毎月'){ d.setMonth(d.getMonth()+1); return fmtYMD(d); }
+  if(recur==='毎月第◯曜日'){
+    const weekday = opts.weekday!=null ? opts.weekday : d.getDay();
+    const week = opts.week!=null ? opts.week : 1;
+    let y=d.getFullYear(), m=d.getMonth()+1+1; // 翌月
+    if(m>12){m=1;y++;}
+    return fmtYMD(nthWeekdayOfMonth(y,m,weekday,week));
+  }
+  if(recur==='毎年第◯曜日'){
+    const weekday = opts.weekday!=null ? opts.weekday : d.getDay();
+    const week = opts.week!=null ? opts.week : 1;
+    const month = opts.month!=null ? opts.month : d.getMonth()+1;
+    return fmtYMD(nthWeekdayOfMonth(d.getFullYear()+1, month, weekday, week));
+  }
+  return '';
+}
+
+// 完了時に次回分のタスクを自動作成
+async function createNextRecurrence(t){
+  if(!t.recur || t.recur==='なし') return;
+  const opts = {
+    weekday: t.recurWeekday!=null && t.recurWeekday!=='' ? Number(t.recurWeekday) : null,
+    month: t.recurMonth!=null && t.recurMonth!=='' ? Number(t.recurMonth) : null,
+    week: t.recurWeek!=null && t.recurWeek!=='' ? Number(t.recurWeek) : null,
+  };
+  const nextStart = addInterval(t.start || t.due, t.recur, opts);
+  const nextDue   = t.due ? addInterval(t.due, t.recur, opts) : '';
+  const nextData = {
+    title: t.title, desc: t.desc, assignee: t.assignee,
+    start: nextStart, due: nextDue,
+    priority: t.priority, status: '未着手', recur: t.recur,
+    recurWeekday: t.recurWeekday, recurMonth: t.recurMonth, recurWeek: t.recurWeek,
+  };
+  try{
+    const page = await createInNotion(nextData);
+    tasks.push({...nextData, id:page.id, notionId:page.id});
+  }catch(e){
+    console.warn('次回分の作成に失敗:', e);
+  }
 }
 
 // ====== UI ======
@@ -379,7 +509,7 @@ function taskRow(t){
   const d=parseDate(t.due),isOver=d&&d<today&&t.status!=='完了';
   const aColor=assigneeColor(t.assignee);
   return `<tr style="cursor:pointer;${t.status==='完了'?'opacity:0.4;':''}" onclick="handleRowClick(event,'${t.notionId}')">
-    <td style="max-width:180px"><div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${t.title}">${t.status==='完了'?`<s>${t.title}</s>`:t.title}</div>
+    <td style="max-width:180px"><div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${t.title}">${t.recur&&t.recur!=='なし'?`<i class="ti ti-repeat" style="font-size:12px;color:var(--text-secondary);margin-right:3px" title="${t.recur}"></i>`:''}${t.status==='完了'?`<s>${t.title}</s>`:t.title}</div>
       ${t.desc?`<div style="font-size:12px;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;max-width:160px">${t.desc}</div>`:''}
     </td>
     <td style="white-space:nowrap">
@@ -497,10 +627,15 @@ function sortBy(k){if(sortKey===k)sortAsc=!sortAsc;else{sortKey=k;sortAsc=true;}
 async function changeStatus(notionId,v){
   const t=tasks.find(t=>t.notionId===notionId);
   if(!t)return;
+  const wasNotDone = t.status!=='完了';
   t.status=v;
   render();
   try{
     await updateInNotion(notionId,t);
+    if(v==='完了' && wasNotDone && t.recur && t.recur!=='なし'){
+      await createNextRecurrence(t);
+      render();
+    }
     setSyncStatus('ok','保存しました（'+new Date().toLocaleTimeString('ja-JP')+'）');
   }catch(e){setSyncStatus('err','保存失敗: '+e.message);}
 }
@@ -526,6 +661,14 @@ function switchTab(tab,el){
   if(tab==='gantt')renderGantt();
 }
 
+function updateRecurDetail(){
+  const v = document.querySelector('input[name="m-recur-r"]:checked')?.value;
+  const showWeek = (v==='毎月第◯曜日'||v==='毎年第◯曜日');
+  document.getElementById('recur-detail-week').style.display = showWeek ? '' : 'none';
+  document.getElementById('recur-detail-weekday').style.display = showWeek ? '' : 'none';
+  document.getElementById('recur-detail-month').style.display = (v==='毎年第◯曜日') ? '' : 'none';
+}
+
 function setDateQuick(id, days){
   const d = new Date(today); d.setDate(d.getDate()+days);
   const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
@@ -547,6 +690,13 @@ function openModal(notionId){
   // 優先度
   const priority=t.priority||'中';
   document.querySelectorAll('input[name="m-priority-r"]').forEach(r=>r.checked=(r.value===priority));
+  // 繰り返し
+  const recur=t.recur||'なし';
+  document.querySelectorAll('input[name="m-recur-r"]').forEach(r=>r.checked=(r.value===recur));
+  document.getElementById('m-recur-week').value = (t.recurWeek!=null && t.recurWeek!=='') ? t.recurWeek : '1';
+  document.getElementById('m-recur-weekday').value = (t.recurWeekday!=null && t.recurWeekday!=='') ? t.recurWeekday : String(today.getDay());
+  document.getElementById('m-recur-month').value = (t.recurMonth!=null && t.recurMonth!=='') ? t.recurMonth : String(today.getMonth()+1);
+  updateRecurDetail();
   const dl=document.getElementById('assignee-list');
   dl.innerHTML=getAssignees().map(a=>`<option value="${a}">`).join('');
   document.getElementById('modal-overlay').classList.add('open');
@@ -559,18 +709,29 @@ async function saveTask(){
   if(!title){alert('タイトルを入力してください');document.getElementById('m-title').focus();return;}
   const statusEl=document.querySelector('input[name="m-status-r"]:checked');
   const priorityEl=document.querySelector('input[name="m-priority-r"]:checked');
+  const recurEl=document.querySelector('input[name="m-recur-r"]:checked');
+  const recurValue = recurEl?recurEl.value:'なし';
+  const isNth = (recurValue==='毎月第◯曜日'||recurValue==='毎年第◯曜日');
   const data={
     title,desc:document.getElementById('m-desc').value.trim(),
     assignee:document.getElementById('m-assignee').value.trim(),
     start:document.getElementById('m-start').value,due:document.getElementById('m-due').value,
     priority:priorityEl?priorityEl.value:'中',status:statusEl?statusEl.value:'未着手',
+    recur:recurValue,
+    recurWeek:isNth?document.getElementById('m-recur-week').value:'',
+    recurWeekday:isNth?document.getElementById('m-recur-weekday').value:'',
+    recurMonth:(recurValue==='毎年第◯曜日')?document.getElementById('m-recur-month').value:'',
   };
+  const prevStatus = editId ? (tasks.find(t=>t.notionId===editId)||{}).status : null;
   closeModal();
   document.getElementById('saving-overlay').classList.add('show');
   try{
     if(editId){
       await updateInNotion(editId,data);
       Object.assign(tasks.find(t=>t.notionId===editId),data);
+      if(data.status==='完了' && prevStatus!=='完了' && data.recur && data.recur!=='なし'){
+        await createNextRecurrence(data);
+      }
     }else{
       const page=await createInNotion(data);
       tasks.push({...data,id:page.id,notionId:page.id});
