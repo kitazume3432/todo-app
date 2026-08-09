@@ -15,7 +15,6 @@
   }
   @media (prefers-color-scheme: dark) {
     :root { --bg:#1c1c1c; --bg-secondary:#2a2a2a; --bg-danger:#3a1f1f; --text:#e8e8e8; --text-secondary:#999; --border:rgba(255,255,255,0.12); --border-hover:rgba(255,255,255,0.25); }
-    .p-high{background:#4a1b0c!important;color:#F0997B!important} .p-mid{background:#412402!important;color:#EF9F27!important} .p-low{background:#173404!important;color:#97C459!important}
     .g-bar.done{background:#27500A!important;color:#C0DD97!important} .g-bar.doing{background:#0C447C!important;color:#B5D4F4!important} .g-bar.todo{background:#444441!important;color:#D3D1C7!important} .g-bar.overdue-bar{background:#791F1F!important;color:#F7C1C1!important}
     select option{background:var(--bg);color:var(--text)}
   }
@@ -51,7 +50,6 @@
   tbody tr[style*="cursor:pointer"]:hover td{background:var(--bg-secondary)}
   tbody td{padding:8px 10px;vertical-align:middle}
   .badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:var(--radius-md);font-weight:500}
-  .p-high{background:#FAECE7;color:#993C1D} .p-mid{background:#FAEEDA;color:#854F0B} .p-low{background:#EAF3DE;color:#3B6D11}
   .icon-btn{background:none;border:none;cursor:pointer;color:var(--text-secondary);padding:4px;border-radius:4px;font-size:16px;line-height:1}
   .icon-btn:hover{color:var(--text);background:var(--bg-secondary)}
   .overdue{color:#A32D2D;font-weight:500}
@@ -71,11 +69,6 @@
   .status-radio{display:flex;align-items:center;justify-content:center;gap:5px;padding:7px 4px;border-radius:var(--radius-md);border:0.5px solid var(--border-hover);cursor:pointer;font-size:13px;transition:background 0.1s}
   .status-radio:has(input:checked){background:var(--bg-secondary);border-color:var(--text-secondary);font-weight:500}
   .status-radio input{display:none}
-  .priority-radio{display:flex;align-items:center;justify-content:center;gap:4px;padding:7px 4px;border-radius:var(--radius-md);border:0.5px solid var(--border-hover);cursor:pointer;font-size:13px}
-  .priority-radio input{display:none}
-  .p-radio-high:has(input:checked){background:#FAECE7;border-color:#993C1D;color:#993C1D;font-weight:500}
-  .p-radio-mid:has(input:checked){background:#FAEEDA;border-color:#854F0B;color:#854F0B;font-weight:500}
-  .p-radio-low:has(input:checked){background:#EAF3DE;border-color:#3B6D11;color:#3B6D11;font-weight:500}
   .date-quick{background:none;border:0.5px solid var(--border-hover);border-radius:99px;padding:2px 8px;font-size:11px;cursor:pointer;color:var(--text-secondary);font-family:var(--font)}
   .date-quick:hover{background:var(--bg-secondary);color:var(--text)}
   .fab{position:fixed;bottom:28px;right:28px;width:56px;height:56px;border-radius:50%;background:#1A6FD4;color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 4px 16px rgba(26,111,212,0.45);z-index:50;transition:transform 0.15s,box-shadow 0.15s}
@@ -120,7 +113,6 @@
     <div class="toolbar">
       <input type="text" id="search" placeholder="タスクを検索...">
       <select id="filter-status"><option value="">すべてのステータス</option><option>未着手</option><option>進行中</option><option>完了</option></select>
-      <select id="filter-priority"><option value="">すべての優先度</option><option>高</option><option>中</option><option>低</option></select>
     </div>
     <table>
       <thead><tr>
@@ -129,7 +121,6 @@
         <th onclick="sortBy('status')">ステータス <i class="ti ti-selector" style="font-size:11px"></i></th>
         <th onclick="sortBy('start')">作業日 <i class="ti ti-selector" style="font-size:11px"></i></th>
         <th onclick="sortBy('due')">期限日 <i class="ti ti-selector" style="font-size:11px"></i></th>
-        <th onclick="sortBy('priority')">優先度 <i class="ti ti-selector" style="font-size:11px"></i></th>
         <th></th>
       </tr></thead>
       <tbody id="tbody"></tbody>
@@ -207,15 +198,6 @@
     </div>
 
     <div class="form-row">
-      <label>🚦 優先度</label>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:2px">
-        <label class="priority-radio p-radio-high" id="pr-high"><input type="radio" name="m-priority-r" value="高"> 🔴 高</label>
-        <label class="priority-radio p-radio-mid"  id="pr-mid" ><input type="radio" name="m-priority-r" value="中" checked> 🟡 中</label>
-        <label class="priority-radio p-radio-low"  id="pr-low" ><input type="radio" name="m-priority-r" value="低"> 🟢 低</label>
-      </div>
-    </div>
-
-    <div class="form-row">
       <label>🔁 繰り返し</label>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:2px">
         <label class="status-radio" id="rr-none"><input type="radio" name="m-recur-r" value="なし" checked onchange="updateRecurDetail()"> なし</label>
@@ -278,14 +260,12 @@
 const PROXY = 'https://icy-mud-2768.kitazume.workers.dev';
 
 // ====== 状態 ======
-const PMAP = {高:'p-high',中:'p-mid',低:'p-low'};
 const today = new Date(); today.setHours(0,0,0,0);
 let tasks = [], sortKey = '', sortAsc = true, editId = null, ganttOffset = 0, activeAssignee = '';
 
 function parseDate(s){if(!s)return null;const d=new Date(s);d.setHours(0,0,0,0);return d;}
 function fmtDisp(s){return s?s.replace(/-/g,'/'):'—';}
 function daysFromToday(n){const d=new Date(today);d.setDate(d.getDate()+n);return d;}
-function getAssignees(){return[...new Set(tasks.map(t=>t.assignee).filter(Boolean))].sort();}
 
 // ====== 担当者カラーパレット ======
 const ASSIGNEE_COLORS = ['#4A90D9','#E8734A','#5BAD6F','#9B6FD4','#D4A017','#D45F8A','#3ABFBF','#8B6F47'];
@@ -335,7 +315,6 @@ function pageToTask(page){
     assignee: getProp('担当者','rich_text'),
     start: getProp('作業日','date'),
     due: getProp('期限日','date'),
-    priority: getProp('優先度','select')||'中',
     status: getProp('ステータス','select')||'未着手',
     recur: getProp('繰り返し','select')||'なし',
     recurWeekday: getProp('繰り返し曜日','rich_text'),
@@ -384,7 +363,6 @@ function buildProperties(data){
     '担当者':{rich_text:[{text:{content:data.assignee||''}}]},
     '作業日':{date:data.start?{start:data.start}:null},
     '期限日':{date:data.due?{start:data.due}:null},
-    '優先度':{select:data.priority?{name:data.priority}:null},
     'ステータス':{select:data.status?{name:data.status}:null},
     '繰り返し':{select:{name:data.recur||'なし'}},
     '繰り返し曜日':{rich_text:[{text:{content:data.recurWeekday!=null?String(data.recurWeekday):''}}]},
@@ -455,7 +433,7 @@ async function createNextRecurrence(t){
   const nextData = {
     title: t.title, desc: t.desc, assignee: t.assignee,
     start: nextStart, due: nextDue,
-    priority: t.priority, status: '未着手', recur: t.recur,
+    status: '未着手', recur: t.recur,
     recurWeekday: t.recurWeekday, recurMonth: t.recurMonth, recurWeek: t.recurWeek,
   };
   try{
@@ -469,10 +447,16 @@ async function createNextRecurrence(t){
 // ====== UI ======
 function getAssignees(){return[...new Set(tasks.map(t=>t.assignee).filter(Boolean))].sort();}
 
+function assigneesByCount(){
+  const counts={};
+  tasks.forEach(t=>{if(t.assignee)counts[t.assignee]=(counts[t.assignee]||0)+1;});
+  return Object.keys(counts).sort((a,b)=>counts[b]-counts[a]);
+}
+
 function renderChips(){
   document.getElementById('assignee-chips').innerHTML=
     `<span class="chip${activeAssignee===''?' active':''}" onclick="setAssignee('')"><i class="ti ti-users" style="font-size:13px;vertical-align:-1px;margin-right:3px"></i>全員</span>`+
-    getAssignees().map(a=>`<span class="chip${activeAssignee===a?' active':''}" onclick="setAssignee('${a.replace(/'/g,"\\'")}')" style="display:inline-flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:${assigneeColor(a)}"></span>${a}</span>`).join('');
+    assigneesByCount().map(a=>`<span class="chip${activeAssignee===a?' active':''}" onclick="setAssignee('${a.replace(/'/g,"\\'")}')" style="display:inline-flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:${assigneeColor(a)}"></span>${a}</span>`).join('');
   const dl=document.getElementById('assignee-list');
   if(dl) dl.innerHTML=getAssignees().map(a=>`<option value="${a}">`).join('');
 }
@@ -482,12 +466,10 @@ function setAssignee(a){activeAssignee=a;renderChips();renderStats();renderList(
 function getFiltered(){
   const q=(document.getElementById('search')?.value||'').toLowerCase();
   const fs=document.getElementById('filter-status')?.value||'';
-  const fp=document.getElementById('filter-priority')?.value||'';
   return tasks.filter(t=>{
     if(activeAssignee&&t.assignee!==activeAssignee)return false;
     if(q&&!t.title.toLowerCase().includes(q)&&!(t.assignee||'').toLowerCase().includes(q))return false;
     if(fs&&t.status!==fs)return false;
-    if(fp&&t.priority!==fp)return false;
     return true;
   }).sort((a,b)=>sortKey?(sortAsc?(a[sortKey]||'').localeCompare(b[sortKey]||''):(b[sortKey]||'').localeCompare(a[sortKey]||'')):0);
 }
@@ -522,7 +504,6 @@ function taskRow(t){
     </select></td>
     <td style="white-space:nowrap;color:var(--text-secondary)">${fmtDisp(t.start)}</td>
     <td style="white-space:nowrap" class="${isOver?'overdue':''}">${isOver?'⚠ ':''}${fmtDisp(t.due)}</td>
-    <td><span class="badge ${PMAP[t.priority]||''}">${t.priority}</span></td>
     <td onclick="event.stopPropagation()">
       <button class="icon-btn" onclick="deleteTask('${t.notionId}')" aria-label="削除"><i class="ti ti-trash"></i></button>
     </td>
@@ -531,7 +512,7 @@ function taskRow(t){
 
 function sectionHeader(label, count, color){
   return `<tr>
-    <td colspan="7" style="padding:10px 10px 6px;font-size:12px;font-weight:600;color:${color};background:var(--bg);border-bottom:2px solid ${color};letter-spacing:0.05em">
+    <td colspan="6" style="padding:10px 10px 6px;font-size:12px;font-weight:600;color:${color};background:var(--bg);border-bottom:2px solid ${color};letter-spacing:0.05em">
       ${label} <span style="font-weight:400;opacity:0.7">(${count})</span>
     </td>
   </tr>`;
@@ -540,16 +521,18 @@ function sectionHeader(label, count, color){
 function renderList(){
   const rows=getFiltered();
   if(rows.length===0){
-    document.getElementById('tbody').innerHTML=`<tr><td colspan="7" class="empty"><i class="ti ti-mood-empty" style="font-size:24px;display:block;margin-bottom:6px"></i>タスクがありません</td></tr>`;
+    document.getElementById('tbody').innerHTML=`<tr><td colspan="6" class="empty"><i class="ti ti-mood-empty" style="font-size:24px;display:block;margin-bottom:6px"></i>タスクがありません</td></tr>`;
     return;
   }
   // 作業日（start）を優先、なければ期限日（due）で判定
   const getKey = t => parseDate(t.start) || parseDate(t.due);
   const tomorrow = daysFromToday(1);
+  const dayAfterTomorrow = daysFromToday(2);
   const todayTasks    = rows.filter(t=>{ const d=getKey(t); return d&&d.getTime()===today.getTime()&&t.status!=='完了'; });
   const tomorrowTasks = rows.filter(t=>{ const d=getKey(t); return d&&d.getTime()===tomorrow.getTime()&&t.status!=='完了'; });
+  const dayAfterTomorrowTasks = rows.filter(t=>{ const d=getKey(t); return d&&d.getTime()===dayAfterTomorrow.getTime()&&t.status!=='完了'; });
   const overdueTasks  = rows.filter(t=>{ const d=getKey(t); return d&&d<today&&t.status!=='完了'; });
-  const futureTasks   = rows.filter(t=>{ const d=getKey(t); return !d||(d>tomorrow&&t.status!=='完了'); }).sort((a,b)=>{const da=getKey(a),db=getKey(b);if(!da&&!db)return 0;if(!da)return 1;if(!db)return -1;return da-db;});
+  const futureTasks   = rows.filter(t=>{ const d=getKey(t); return !d||(d>dayAfterTomorrow&&t.status!=='完了'); }).sort((a,b)=>{const da=getKey(a),db=getKey(b);if(!da&&!db)return 0;if(!da)return 1;if(!db)return -1;return da-db;});
   const doneTasks     = rows.filter(t=> t.status==='完了');
 
   let html='';
@@ -564,6 +547,10 @@ function renderList(){
   if(tomorrowTasks.length){
     html += sectionHeader('🌅 明日', tomorrowTasks.length, '#5B9BD5');
     html += tomorrowTasks.map(taskRow).join('');
+  }
+  if(dayAfterTomorrowTasks.length){
+    html += sectionHeader('📆 明後日', dayAfterTomorrowTasks.length, '#7CA9D9');
+    html += dayAfterTomorrowTasks.map(taskRow).join('');
   }
   if(futureTasks.length){
     html += sectionHeader('📋 今後の予定', futureTasks.length, 'var(--text-secondary)');
@@ -597,9 +584,7 @@ function renderGantt(){
     const s=parseDate(t.start||t.due),e=parseDate(t.due);
     const isOver=e&&e<today&&t.status!=='完了';
     const barClass=isOver?'overdue-bar':t.status==='完了'?'done':t.status==='進行中'?'doing':'todo';
-    const aBarColor=assigneeColor(t.assignee);
     html+=`<div class="g-label" onclick="openModal('${t.notionId}')" title="${t.title}">
-      <span class="badge ${PMAP[t.priority]||''}" style="flex-shrink:0;font-size:10px;padding:1px 5px">${t.priority}</span>
       <span style="overflow:hidden;text-overflow:ellipsis">${t.title}</span>
     </div>`;
     cols.forEach(d=>{
@@ -687,9 +672,6 @@ function openModal(notionId){
   // ステータス
   const status=t.status||'未着手';
   document.querySelectorAll('input[name="m-status-r"]').forEach(r=>r.checked=(r.value===status));
-  // 優先度
-  const priority=t.priority||'中';
-  document.querySelectorAll('input[name="m-priority-r"]').forEach(r=>r.checked=(r.value===priority));
   // 繰り返し
   const recur=t.recur||'なし';
   document.querySelectorAll('input[name="m-recur-r"]').forEach(r=>r.checked=(r.value===recur));
@@ -708,7 +690,6 @@ async function saveTask(){
   const title=document.getElementById('m-title').value.trim();
   if(!title){alert('タイトルを入力してください');document.getElementById('m-title').focus();return;}
   const statusEl=document.querySelector('input[name="m-status-r"]:checked');
-  const priorityEl=document.querySelector('input[name="m-priority-r"]:checked');
   const recurEl=document.querySelector('input[name="m-recur-r"]:checked');
   const recurValue = recurEl?recurEl.value:'なし';
   const isNth = (recurValue==='毎月第◯曜日'||recurValue==='毎年第◯曜日');
@@ -716,7 +697,7 @@ async function saveTask(){
     title,desc:document.getElementById('m-desc').value.trim(),
     assignee:document.getElementById('m-assignee').value.trim(),
     start:document.getElementById('m-start').value,due:document.getElementById('m-due').value,
-    priority:priorityEl?priorityEl.value:'中',status:statusEl?statusEl.value:'未着手',
+    status:statusEl?statusEl.value:'未着手',
     recur:recurValue,
     recurWeek:isNth?document.getElementById('m-recur-week').value:'',
     recurWeekday:isNth?document.getElementById('m-recur-weekday').value:'',
@@ -748,7 +729,6 @@ async function saveTask(){
 
 document.getElementById('search').addEventListener('input',()=>{renderStats();renderList();});
 document.getElementById('filter-status').addEventListener('input',()=>{renderStats();renderList();});
-document.getElementById('filter-priority').addEventListener('input',()=>{renderStats();renderList();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 
 loadFromNotion();
