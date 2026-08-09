@@ -93,6 +93,18 @@
   .saving-overlay{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.15);align-items:center;justify-content:center}
   .saving-overlay.show{display:flex}
   .saving-box{background:var(--bg);border-radius:var(--radius-lg);padding:20px 32px;font-size:14px;color:var(--text-secondary);border:0.5px solid var(--border)}
+  @media (max-width:520px){
+    .container{padding:14px 8px}
+    h1{font-size:17px;margin-bottom:12px}
+    .stats{gap:6px}
+    .stat-card{padding:7px 8px}
+    .stat-num{font-size:16px}
+    table{font-size:12.5px}
+    thead th{padding:6px 6px;font-size:11px}
+    tbody td{padding:6px 6px}
+    td select{font-size:11px;padding:2px 4px}
+    .chip{padding:4px 9px;font-size:11px}
+  }
 </style>
 </head>
 <body>
@@ -114,6 +126,7 @@
       <input type="text" id="search" placeholder="タスクを検索...">
       <select id="filter-status"><option value="">すべてのステータス</option><option>未着手</option><option>進行中</option><option>完了</option></select>
     </div>
+    <div style="overflow-x:auto">
     <table>
       <thead><tr>
         <th onclick="sortBy('title')">タイトル <i class="ti ti-selector" style="font-size:11px"></i></th>
@@ -125,6 +138,7 @@
       </tr></thead>
       <tbody id="tbody"></tbody>
     </table>
+    </div>
   </div>
   <div id="gantt-view" style="display:none">
     <div class="g-nav">
@@ -264,7 +278,7 @@ const today = new Date(); today.setHours(0,0,0,0);
 let tasks = [], sortKey = '', sortAsc = true, editId = null, ganttOffset = 0, activeAssignee = '';
 
 function parseDate(s){if(!s)return null;const d=new Date(s);d.setHours(0,0,0,0);return d;}
-function fmtDisp(s){return s?s.replace(/-/g,'/'):'—';}
+function fmtDisp(s){if(!s)return'—';const parts=s.split('-');if(parts.length!==3)return s.replace(/-/g,'/');return `${Number(parts[1])}/${Number(parts[2])}`;}
 function daysFromToday(n){const d=new Date(today);d.setDate(d.getDate()+n);return d;}
 
 // ====== 担当者カラーパレット ======
