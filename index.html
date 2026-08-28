@@ -60,7 +60,7 @@
   .modal{background:var(--bg);border-radius:var(--radius-lg);border:0.5px solid var(--border);width:360px;max-width:calc(100vw - 32px);max-height:calc(100vh - 48px);display:flex;flex-direction:column;overflow:hidden}
   .modal-header{padding:1.25rem 1.25rem 0.5rem;flex-shrink:0}
   .modal-header h2{font-size:15px;font-weight:500}
-  .modal-body{padding:0 1.25rem 1rem;overflow-y:auto;flex:1;min-height:0}
+  .modal-body{padding:0 1.25rem 1rem;overflow-y:auto;overflow-x:hidden;flex:1;min-height:0}
   .modal-footer{padding:0.75rem 1.25rem 1.25rem;flex-shrink:0;border-top:0.5px solid var(--border);background:var(--bg)}
   .form-row{margin-bottom:10px} .form-row label{display:block;font-size:12px;color:var(--text-secondary);margin-bottom:4px}
   .form-row input,.form-row select,.form-row textarea{width:100%} .form-row textarea{height:64px}
@@ -197,7 +197,7 @@
         <div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">
           <button type="button" class="date-quick" onclick="setDateQuick('m-start',0)">今日</button>
           <button type="button" class="date-quick" onclick="setDateQuick('m-start',1)">明日</button>
-          <button type="button" class="date-quick" onclick="setDateQuick('m-start',7)">1週間後</button>
+          <button type="button" class="date-quick" onclick="setDateQuick('m-start',14)">2週間後</button>
         </div>
       </div>
       <div class="form-row">
@@ -206,21 +206,21 @@
         <div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">
           <button type="button" class="date-quick" onclick="setDateQuick('m-due',0)">今日</button>
           <button type="button" class="date-quick" onclick="setDateQuick('m-due',1)">明日</button>
-          <button type="button" class="date-quick" onclick="setDateQuick('m-due',7)">1週間後</button>
+          <button type="button" class="date-quick" onclick="setDateQuick('m-due',14)">2週間後</button>
         </div>
       </div>
     </div>
 
     <div class="form-row">
       <label>🔁 繰り返し</label>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:2px">
-        <label class="status-radio" id="rr-none"><input type="radio" name="m-recur-r" value="なし" checked onchange="updateRecurDetail()"> なし</label>
-        <label class="status-radio" id="rr-daily"><input type="radio" name="m-recur-r" value="毎日" onchange="updateRecurDetail()"> 毎日</label>
-        <label class="status-radio" id="rr-weekly"><input type="radio" name="m-recur-r" value="毎週" onchange="updateRecurDetail()"> 毎週</label>
-        <label class="status-radio" id="rr-monthly"><input type="radio" name="m-recur-r" value="毎月" onchange="updateRecurDetail()"> 毎月</label>
-        <label class="status-radio" id="rr-monthly-nth"><input type="radio" name="m-recur-r" value="毎月第◯曜日" onchange="updateRecurDetail()"> 毎月第◯◯曜</label>
-        <label class="status-radio" id="rr-yearly-nth"><input type="radio" name="m-recur-r" value="毎年第◯曜日" onchange="updateRecurDetail()"> 毎年◯月第◯◯曜</label>
-      </div>
+      <select id="m-recur" onchange="updateRecurDetail()">
+        <option value="なし">なし</option>
+        <option value="毎日">毎日</option>
+        <option value="毎週">毎週</option>
+        <option value="毎月">毎月</option>
+        <option value="毎月第◯曜日">毎月第◯◯曜</option>
+        <option value="毎年第◯曜日">毎年◯月第◯◯曜</option>
+      </select>
 
       <div id="recur-detail-week" style="display:none;margin-top:8px">
         <label style="font-size:12px;color:var(--text-secondary);display:block;margin-bottom:4px">第何週</label>
@@ -661,7 +661,7 @@ function switchTab(tab,el){
 }
 
 function updateRecurDetail(){
-  const v = document.querySelector('input[name="m-recur-r"]:checked')?.value;
+  const v = document.getElementById('m-recur').value;
   const showWeek = (v==='毎月第◯曜日'||v==='毎年第◯曜日');
   document.getElementById('recur-detail-week').style.display = showWeek ? '' : 'none';
   document.getElementById('recur-detail-weekday').style.display = showWeek ? '' : 'none';
@@ -687,8 +687,7 @@ function openModal(notionId){
   const status=t.status||'未着手';
   document.querySelectorAll('input[name="m-status-r"]').forEach(r=>r.checked=(r.value===status));
   // 繰り返し
-  const recur=t.recur||'なし';
-  document.querySelectorAll('input[name="m-recur-r"]').forEach(r=>r.checked=(r.value===recur));
+  document.getElementById('m-recur').value = t.recur||'なし';
   document.getElementById('m-recur-week').value = (t.recurWeek!=null && t.recurWeek!=='') ? t.recurWeek : '1';
   document.getElementById('m-recur-weekday').value = (t.recurWeekday!=null && t.recurWeekday!=='') ? t.recurWeekday : String(today.getDay());
   document.getElementById('m-recur-month').value = (t.recurMonth!=null && t.recurMonth!=='') ? t.recurMonth : String(today.getMonth()+1);
@@ -704,8 +703,7 @@ async function saveTask(){
   const title=document.getElementById('m-title').value.trim();
   if(!title){alert('タイトルを入力してください');document.getElementById('m-title').focus();return;}
   const statusEl=document.querySelector('input[name="m-status-r"]:checked');
-  const recurEl=document.querySelector('input[name="m-recur-r"]:checked');
-  const recurValue = recurEl?recurEl.value:'なし';
+  const recurValue = document.getElementById('m-recur').value;
   const isNth = (recurValue==='毎月第◯曜日'||recurValue==='毎年第◯曜日');
   const data={
     title,desc:document.getElementById('m-desc').value.trim(),
