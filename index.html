@@ -15,7 +15,6 @@
   }
   @media (prefers-color-scheme: dark) {
     :root { --bg:#1c1c1c; --bg-secondary:#2a2a2a; --bg-danger:#3a1f1f; --text:#e8e8e8; --text-secondary:#999; --border:rgba(255,255,255,0.12); --border-hover:rgba(255,255,255,0.25); }
-    .g-bar.done{background:#27500A!important;color:#C0DD97!important} .g-bar.doing{background:#0C447C!important;color:#B5D4F4!important} .g-bar.todo{background:#444441!important;color:#D3D1C7!important} .g-bar.overdue-bar{background:#791F1F!important;color:#F7C1C1!important}
     select option{background:var(--bg);color:var(--text)}
   }
   *{box-sizing:border-box;margin:0;padding:0}
@@ -30,10 +29,6 @@
   .chip{padding:5px 12px;border-radius:99px;font-size:12px;cursor:pointer;border:0.5px solid var(--border-hover);background:var(--bg);color:var(--text-secondary);white-space:nowrap}
   .chip.active{background:var(--bg-secondary);color:var(--text);border-color:var(--text-secondary);font-weight:500}
   .chip:hover{border-color:var(--text-secondary);color:var(--text)}
-  .tabs{display:flex;gap:4px;border-bottom:0.5px solid var(--border);margin-bottom:16px}
-  .tab{background:none;border:none;padding:8px 16px;font-size:14px;cursor:pointer;color:var(--text-secondary);border-bottom:2px solid transparent;margin-bottom:-0.5px;font-family:var(--font)}
-  .tab.active{color:var(--text);border-bottom:2px solid var(--text);font-weight:500}
-  .tab:hover{color:var(--text)}
   .toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
   input[type=text],input[type=date],select,textarea{background:var(--bg);color:var(--text);border:0.5px solid var(--border-hover);border-radius:var(--radius-md);padding:0 12px;height:36px;font-size:14px;font-family:var(--font);outline:none}
   input[type=text]:focus,input[type=date]:focus,select:focus,textarea:focus{border-color:var(--text-secondary);box-shadow:0 0 0 2px rgba(0,0,0,0.06)}
@@ -76,15 +71,6 @@
   .fab:active{transform:scale(0.96)}
   .fab-label{position:fixed;bottom:36px;right:92px;background:var(--bg);border:0.5px solid var(--border-hover);border-radius:var(--radius-md);padding:6px 12px;font-size:13px;color:var(--text);white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.1);z-index:50;opacity:0;pointer-events:none;transition:opacity 0.2s}
   .fab:hover ~ .fab-label, .fab-label:hover{opacity:1}
-  .gantt-wrap{overflow-x:auto}
-  .g-label{font-size:13px;padding:6px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:0.5px solid var(--border);display:flex;align-items:center;gap:6px;cursor:pointer}
-  .g-cell{border-bottom:0.5px solid var(--border);position:relative;height:36px}
-  .g-bar{position:absolute;top:6px;height:22px;border-radius:4px;display:flex;align-items:center;padding:0 6px;font-size:11px;font-weight:500;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:4px}
-  .g-bar.done{background:#C0DD97;color:#27500A} .g-bar.doing{background:#B5D4F4;color:#0C447C} .g-bar.todo{background:#D3D1C7;color:#444441} .g-bar.overdue-bar{background:#F7C1C1;color:#791F1F}
-  .g-header{font-size:11px;color:var(--text-secondary);padding:4px 2px;border-bottom:0.5px solid var(--border);text-align:center;border-left:0.5px solid var(--border)}
-  .g-nav{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
-  .legend{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px;font-size:12px;color:var(--text-secondary)}
-  .legend-item{display:flex;align-items:center;gap:4px} .legend-dot{width:10px;height:10px;border-radius:2px}
   /* Sync status */
   .sync-bar{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:12px;color:var(--text-secondary)}
   .sync-dot{width:8px;height:8px;border-radius:50%;background:#ccc;flex-shrink:0}
@@ -93,6 +79,14 @@
   .saving-overlay{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.15);align-items:center;justify-content:center}
   .saving-overlay.show{display:flex}
   .saving-box{background:var(--bg);border-radius:var(--radius-lg);padding:20px 32px;font-size:14px;color:var(--text-secondary);border:0.5px solid var(--border)}
+  .must-box{border:0.5px solid var(--border-hover);border-radius:var(--radius-lg);padding:12px 14px;margin-bottom:18px;background:var(--bg-secondary)}
+  .must-title{font-size:13px;font-weight:600;margin-bottom:8px}
+  .must-item{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:14px;border-bottom:0.5px solid var(--border);cursor:pointer}
+  .must-item:last-of-type{border-bottom:none}
+  .must-item input[type=checkbox]{width:18px;height:18px;cursor:pointer;flex-shrink:0}
+  .must-item span{flex:1;word-break:break-word}
+  .must-add{display:flex;gap:8px;margin-top:10px}
+  .must-add input{flex:1;min-width:0}
   @media (max-width:520px){
     .container{padding:14px 8px}
     h1{font-size:17px;margin-bottom:12px}
@@ -117,13 +111,16 @@
   </div>
   <div class="stats" id="stats"></div>
   <div class="assignee-chips" id="assignee-chips"></div>
-  <div class="tabs">
-    <button class="tab active" onclick="switchTab('list',this)"><i class="ti ti-list" style="font-size:15px;vertical-align:-2px;margin-right:4px"></i>リスト</button>
-    <button class="tab" onclick="switchTab('gantt',this)"><i class="ti ti-chart-gantt" style="font-size:15px;vertical-align:-2px;margin-right:4px"></i>ガントチャート</button>
+  <div class="must-box">
+    <div class="must-title">📌 やらなくてはいけないこと</div>
+    <div id="must-list"></div>
+    <div class="must-add">
+      <input type="text" id="must-input" placeholder="やることを追加（Enterで追加）">
+      <button class="btn" onclick="addMust()">追加</button>
+    </div>
   </div>
   <div id="list-view">
     <div class="toolbar">
-      <input type="text" id="search" placeholder="タスクを検索...">
       <select id="filter-status"><option value="">すべてのステータス</option><option>未着手</option><option>進行中</option><option>完了</option></select>
     </div>
     <div style="overflow-x:auto">
@@ -139,22 +136,6 @@
       <tbody id="tbody"></tbody>
     </table>
     </div>
-  </div>
-  <div id="gantt-view" style="display:none">
-    <div class="g-nav">
-      <button class="icon-btn" onclick="shiftGantt(-14)"><i class="ti ti-chevron-left"></i></button>
-      <span id="gantt-range" style="min-width:160px;text-align:center;font-size:13px;color:var(--text-secondary)"></span>
-      <button class="icon-btn" onclick="shiftGantt(14)"><i class="ti ti-chevron-right"></i></button>
-      <button class="btn" onclick="resetGantt()">今日</button>
-    </div>
-    <div class="legend">
-      <span class="legend-item"><span class="legend-dot" style="background:#C0DD97"></span>完了</span>
-      <span class="legend-item"><span class="legend-dot" style="background:#B5D4F4"></span>進行中</span>
-      <span class="legend-item"><span class="legend-dot" style="background:#D3D1C7"></span>未着手</span>
-      <span class="legend-item"><span class="legend-dot" style="background:#F7C1C1"></span>期限超過</span>
-      <span class="legend-item"><span class="legend-dot" style="background:#E24B4A;width:3px;height:14px;border-radius:1px"></span>今日</span>
-    </div>
-    <div class="gantt-wrap" id="gantt-wrap"></div>
   </div>
 </div>
 
@@ -218,6 +199,7 @@
         <option value="毎日">毎日</option>
         <option value="毎週">毎週</option>
         <option value="毎月">毎月</option>
+        <option value="毎月最終日">毎月最終日</option>
         <option value="毎月第◯曜日">毎月第◯◯曜</option>
         <option value="毎年第◯曜日">毎年◯月第◯◯曜</option>
       </select>
@@ -275,7 +257,8 @@ const PROXY = 'https://icy-mud-2768.kitazume.workers.dev';
 
 // ====== 状態 ======
 const today = new Date(); today.setHours(0,0,0,0);
-let tasks = [], sortKey = '', sortAsc = true, editId = null, ganttOffset = 0, activeAssignee = '';
+let tasks = [], mustItems = [], sortKey = '', sortAsc = true, editId = null, activeAssignee = '';
+const MUST_STATUS = 'リスト';
 
 function parseDate(s){if(!s)return null;const d=new Date(s);d.setHours(0,0,0,0);return d;}
 function fmtDisp(s){if(!s)return'—';const parts=s.split('-');if(parts.length!==3)return s.replace(/-/g,'/');return `${Number(parts[1])}/${Number(parts[2])}`;}
@@ -342,7 +325,9 @@ async function loadFromNotion(){
   setSyncStatus('loading','Notionに接続中...');
   try {
     const data = await notionRequest(`/databases/37ee4022213780cdb770d787ccf00af1/query`,'POST',{page_size:100});
-    tasks = data.results.filter(p=>!p.archived).map(pageToTask);
+    const all = data.results.filter(p=>!p.archived).map(pageToTask);
+    mustItems = all.filter(t=>t.status===MUST_STATUS);
+    tasks = all.filter(t=>t.status!==MUST_STATUS);
     setSyncStatus('ok',`${tasks.length}件のタスクを読み込みました（最終更新: ${new Date().toLocaleTimeString('ja-JP')}）`);
     render();
   } catch(e){
@@ -418,6 +403,7 @@ function addInterval(dateStr, recur, opts={}){
   if(recur==='毎日'){ d.setDate(d.getDate()+1); return fmtYMD(d); }
   if(recur==='毎週'){ d.setDate(d.getDate()+7); return fmtYMD(d); }
   if(recur==='毎月'){ d.setMonth(d.getMonth()+1); return fmtYMD(d); }
+  if(recur==='毎月最終日'){ return fmtYMD(new Date(d.getFullYear(), d.getMonth()+2, 0)); }
   if(recur==='毎月第◯曜日'){
     const weekday = opts.weekday!=null ? opts.weekday : d.getDay();
     const week = opts.week!=null ? opts.week : 1;
@@ -475,14 +461,12 @@ function renderChips(){
   if(dl) dl.innerHTML=getAssignees().map(a=>`<option value="${a}">`).join('');
 }
 
-function setAssignee(a){activeAssignee=a;renderChips();renderStats();renderList();renderGantt();}
+function setAssignee(a){activeAssignee=a;renderChips();renderStats();renderList();}
 
 function getFiltered(){
-  const q=(document.getElementById('search')?.value||'').toLowerCase();
   const fs=document.getElementById('filter-status')?.value||'';
   return tasks.filter(t=>{
     if(activeAssignee&&t.assignee!==activeAssignee)return false;
-    if(q&&!t.title.toLowerCase().includes(q)&&!(t.assignee||'').toLowerCase().includes(q))return false;
     if(fs&&t.status!==fs)return false;
     return true;
   }).sort((a,b)=>sortKey?(sortAsc?(a[sortKey]||'').localeCompare(b[sortKey]||''):(b[sortKey]||'').localeCompare(a[sortKey]||'')):0);
@@ -577,42 +561,38 @@ function renderList(){
   document.getElementById('tbody').innerHTML = html;
 }
 
-function renderGantt(){
-  const DAYS=28,COL_W=28,LABEL_W=160;
-  const startD=daysFromToday(-7+ganttOffset),endD=daysFromToday(-7+ganttOffset+DAYS-1);
-  document.getElementById('gantt-range').textContent=`${startD.getMonth()+1}/${startD.getDate()} — ${endD.getMonth()+1}/${endD.getDate()}`;
-  const cols=Array.from({length:DAYS},(_,i)=>{const d=new Date(startD);d.setDate(d.getDate()+i);return d;});
-  const rows=getFiltered().sort((a,b)=>{
-    const aDone=a.status==='完了', bDone=b.status==='完了';
-    if(aDone!==bDone) return aDone?1:-1;
-    return (a.start||a.due||'').localeCompare(b.start||b.due||'');
-  });
-  let html=`<div style="display:grid;grid-template-columns:${LABEL_W}px repeat(${DAYS},${COL_W}px);min-width:${LABEL_W+DAYS*COL_W}px">`;
-  html+=`<div style="font-size:11px;color:var(--text-secondary);padding:4px 8px;border-bottom:0.5px solid var(--border)">タスク</div>`;
-  cols.forEach(d=>{
-    const isToday=d.getTime()===today.getTime();
-    html+=`<div class="g-header" style="${isToday?'background:var(--bg-danger);color:#A32D2D;':''}">${d.getDate()}</div>`;
-  });
-  if(rows.length===0) html+=`<div style="grid-column:1/-1;padding:2rem;text-align:center;color:var(--text-secondary);font-size:14px">タスクがありません</div>`;
-  rows.forEach(t=>{
-    const s=parseDate(t.start||t.due),e=parseDate(t.due);
-    const isOver=e&&e<today&&t.status!=='完了';
-    const barClass=isOver?'overdue-bar':t.status==='完了'?'done':t.status==='進行中'?'doing':'todo';
-    html+=`<div class="g-label" onclick="openModal('${t.notionId}')" title="${t.title}">
-      <span style="overflow:hidden;text-overflow:ellipsis">${t.title}</span>
-    </div>`;
-    cols.forEach(d=>{
-      const inRange=s&&e&&d>=s&&d<=e,isFirst=s&&d.getTime()===s.getTime(),isLast=e&&d.getTime()===e.getTime(),isToday2=d.getTime()===today.getTime();
-      html+=`<div class="g-cell" style="${isToday2?'background:rgba(226,75,74,0.06)':''}">`;
-      if(inRange){
-        const lrad=isFirst?'4px':'0',rrad=isLast?'4px':'0',loff=isFirst?'2px':'0',roff=isLast?'2px':'0';
-        html+=`<div class="g-bar ${barClass}" style="left:${loff};right:${roff};border-radius:${lrad} ${rrad} ${rrad} ${lrad}">${isFirst&&t.assignee?t.assignee.split(' ')[0]:''}</div>`;
-      }
-      html+='</div>';
-    });
-  });
-  html+='</div>';
-  document.getElementById('gantt-wrap').innerHTML=html;
+// ====== やらなくてはいけないことリスト ======
+function renderMust(){
+  const el=document.getElementById('must-list');
+  if(!el)return;
+  if(mustItems.length===0){
+    el.innerHTML='<div style="font-size:13px;color:var(--text-secondary)">まだありません</div>';
+    return;
+  }
+  el.innerHTML=mustItems.map(t=>`<label class="must-item"><input type="checkbox" onchange="doneMust('${t.notionId}')"><span>${t.title.replace(/</g,'&lt;')}</span></label>`).join('');
+}
+
+async function addMust(){
+  const input=document.getElementById('must-input');
+  const title=input.value.trim();
+  if(!title)return;
+  input.value='';
+  try{
+    const data={title,desc:'',assignee:'',start:'',due:'',status:MUST_STATUS,recur:'なし',recurWeekday:'',recurMonth:'',recurWeek:''};
+    const page=await createInNotion(data);
+    mustItems.push({...data,id:page.id,notionId:page.id});
+    renderMust();
+    setSyncStatus('ok','追加しました（'+new Date().toLocaleTimeString('ja-JP')+'）');
+  }catch(e){setSyncStatus('err','追加失敗: '+e.message);alert('追加に失敗しました。\n'+e.message);}
+}
+
+async function doneMust(notionId){
+  mustItems=mustItems.filter(t=>t.notionId!==notionId);
+  renderMust();
+  try{
+    await deleteInNotion(notionId);
+    setSyncStatus('ok','完了しました（'+new Date().toLocaleTimeString('ja-JP')+'）');
+  }catch(e){setSyncStatus('err','更新失敗: '+e.message);}
 }
 
 function handleRowClick(event, notionId){
@@ -620,7 +600,7 @@ function handleRowClick(event, notionId){
   openModal(notionId);
 }
 
-function render(){renderStats();renderChips();renderList();renderGantt();}
+function render(){renderStats();renderChips();renderList();renderMust();}
 function sortBy(k){if(sortKey===k)sortAsc=!sortAsc;else{sortKey=k;sortAsc=true;}renderList();}
 
 async function changeStatus(notionId,v){
@@ -649,16 +629,6 @@ async function deleteTask(notionId){
   }catch(e){setSyncStatus('err','削除失敗: '+e.message);}
 }
 
-function shiftGantt(n){ganttOffset+=n;renderGantt();}
-function resetGantt(){ganttOffset=0;renderGantt();}
-
-function switchTab(tab,el){
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  el.classList.add('active');
-  document.getElementById('list-view').style.display=tab==='list'?'':'none';
-  document.getElementById('gantt-view').style.display=tab==='gantt'?'':'none';
-  if(tab==='gantt')renderGantt();
-}
 
 function updateRecurDetail(){
   const v = document.getElementById('m-recur').value;
@@ -739,9 +709,9 @@ async function saveTask(){
   }
 }
 
-document.getElementById('search').addEventListener('input',()=>{renderStats();renderList();});
 document.getElementById('filter-status').addEventListener('input',()=>{renderStats();renderList();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+document.getElementById('must-input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing)addMust();});
 
 loadFromNotion();
 </script>
