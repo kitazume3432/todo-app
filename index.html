@@ -84,9 +84,22 @@
   .must-item{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:14px;border-bottom:0.5px solid var(--border)}
   .must-item:last-of-type{border-bottom:none}
   .must-item input[type=checkbox]{width:18px;height:18px;cursor:pointer;flex-shrink:0}
-  .must-item span{flex:1;word-break:break-word;cursor:text}
+  .must-main{flex:1;min-width:0}
+  .must-title-text{word-break:break-word;cursor:text}
+  .must-sub{font-size:11px;color:var(--text-secondary);margin-top:1px}
+  .must-sub.over{color:#A32D2D;font-weight:500}
+  .must-done{height:26px;font-size:12px;padding:0 10px;flex-shrink:0}
+  .must-item.editing{flex-wrap:wrap}
+  .must-item.editing input[type=text].must-edit-title{min-width:140px}
+  .must-item input.must-edit-date{width:130px;flex:none}
   .must-item input[type=text]{flex:1;min-width:0;height:30px;font-size:14px}
-  .must-add{display:flex;gap:8px;margin-top:10px}
+  .must-when{flex:none;font-size:12px;color:var(--text-secondary);background:var(--bg);border:0.5px solid var(--border-hover);border-radius:99px;padding:1px 9px;cursor:pointer;white-space:nowrap}
+  .must-when.over{color:#A32D2D;border-color:#A32D2D;font-weight:500}
+  .must-when.none{opacity:0.55}
+  .must-item input[type=date]{height:30px;font-size:13px;padding:0 6px}
+  .must-add{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+  .must-add input.must-when-input{width:170px;flex:none}
+  .must-item input.must-edit-when{flex:none;width:110px}
   .must-add input{flex:1;min-width:0}
   @media (max-width:520px){
     .container{padding:14px 8px}
@@ -115,8 +128,10 @@
   <div class="must-box">
     <div class="must-title">📌 やらなくてはいけないこと</div>
     <div id="must-list"></div>
+    <datalist id="when-list"><option value="1週間ごと"><option value="2週間ごと"><option value="1か月ごと"><option value="2か月ごと"><option value="3か月ごと"><option value="半年ごと"><option value="1年ごと"><option value="随時"></datalist>
     <div class="must-add">
       <input type="text" id="must-input" placeholder="やることを追加（Enterで追加）">
+      <input type="text" id="must-when" class="must-when-input" list="when-list" placeholder="いつ（例：1か月ごと）">
       <button class="btn" onclick="addMust()">追加</button>
     </div>
   </div>
@@ -563,6 +578,70 @@ function renderList(){
 }
 
 // ====== やらなくてはいけないことリスト ======
+// 「いつ」＝目安の周期（例：1か月ごと）→ Notionの「説明」欄
+// 「前回やった日」→ Notionの「作業日」欄。次の目安日は周期と前回から計算する
+// --- cycle helpers start
+function parseCycle(text){
+  if(!text)return null;
+  const t=String(text).normalize('NFKC');
+  let m;
+  if(/半年/.test(t))return {unit:'m',n:6};
+  if((m=t.match(/(\d+)\s*年/)))return {unit:'m',n:12*Number(m[1])};
+  if((m=t.match(/(\d+)\s*[かカヶケ]?\s*月/)))return {unit:'m',n:Number(m[1])};
+  if((m=t.match(/(\d+)\s*週/)))return {unit:'d',n:7*Number(m[1])};
+  if((m=t.match(/(\d+)\s*日/)))return {unit:'d',n:Number(m[1])};
+  if(/毎日/.test(t))return {unit:'d',n:1};
+  if(/毎週/.test(t))return {unit:'d',n:7};
+  if(/毎月/.test(t))return {unit:'m',n:1};
+  if(/毎年/.test(t))return {unit:'m',n:12};
+  return null;
+}
+function addMonthsClamped(date,n){
+  const d=new Date(date);
+  const day=d.getDate();
+  d.setDate(1);
+  d.setMonth(d.getMonth()+n);
+  const last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();
+  d.setDate(Math.min(day,last));
+  d.setHours(0,0,0,0);
+  return d;
+}
+// 戻り値: {cycle, last, next, days} / 周期が読み取れない場合は null
+function mustSchedule(t){
+  const cycle=parseCycle(t.desc);
+  if(!cycle||cycle.n<=0)return null;
+  const last=parseDate(t.start);
+  if(!last)return {cycle,last:null,next:null,days:null};
+  let next;
+  if(cycle.unit==='d'){next=new Date(last);next.setDate(next.getDate()+cycle.n);next.setHours(0,0,0,0);}
+  else next=addMonthsClamped(last,cycle.n);
+  const days=Math.round((next-today)/86400000);
+  return {cycle,last,next,days};
+}
+function mustSortKey(t){
+  const sc=mustSchedule(t);
+  if(!sc)return Infinity;
+  if(!sc.next)return today.getTime();
+  return sc.next.getTime();
+}
+// --- cycle helpers end
+
+function sortedMust(){
+  return mustItems.map((t,i)=>({t,i,k:mustSortKey(t)}))
+    .sort((a,b)=>a.k===b.k?a.i-b.i:(a.k<b.k?-1:1)).map(x=>x.t);
+}
+
+function mustSubText(t){
+  const sc=mustSchedule(t);
+  if(!sc)return '';
+  if(!sc.last)return '<div class="must-sub over">未実施</div>';
+  let tail;
+  if(sc.days<0)tail=`⚠ ${-sc.days}日超過`;
+  else if(sc.days===0)tail='今日が目安';
+  else tail=`あと${sc.days}日`;
+  return `<div class="must-sub${sc.days<=0?' over':''}">前回 ${fmtDisp(t.start)} ・ 次 ${fmtDisp(fmtYMD(sc.next))}（${tail}）</div>`;
+}
+
 function renderMust(){
   const el=document.getElementById('must-list');
   if(!el)return;
@@ -570,56 +649,82 @@ function renderMust(){
     el.innerHTML='<div style="font-size:13px;color:var(--text-secondary)">まだありません</div>';
     return;
   }
-  el.innerHTML=mustItems.map(t=>`<div class="must-item" id="must-${t.notionId}"><input type="checkbox" onchange="doneMust('${t.notionId}')"><span onclick="editMust('${t.notionId}')" title="クリックで編集">${t.title.replace(/</g,'&lt;')}</span><button class="icon-btn" onclick="editMust('${t.notionId}')" aria-label="編集"><i class="ti ti-pencil"></i></button></div>`).join('');
+  el.innerHTML=sortedMust().map(t=>{
+    const when=t.desc?`<span class="must-when" onclick="editMust('${t.notionId}')" title="クリックで編集">${t.desc.replace(/</g,'&lt;')}</span>`
+                     :`<span class="must-when none" onclick="editMust('${t.notionId}')" title="いつ？を設定">いつ？</span>`;
+    const doneBtn=parseCycle(t.desc)?`<button class="btn must-done" onclick="doneMustToday('${t.notionId}')" title="今日やった日として記録">やった</button>`:'';
+    return `<div class="must-item" id="must-${t.notionId}">${when}<div class="must-main"><span class="must-title-text" onclick="editMust('${t.notionId}')" title="クリックで編集">${t.title.replace(/</g,'&lt;')}</span>${mustSubText(t)}</div>${doneBtn}<button class="icon-btn" onclick="editMust('${t.notionId}')" aria-label="編集"><i class="ti ti-pencil"></i></button><button class="icon-btn" onclick="deleteMust('${t.notionId}')" aria-label="削除"><i class="ti ti-trash"></i></button></div>`;
+  }).join('');
+}
+
+async function doneMustToday(notionId){
+  const t=mustItems.find(t=>t.notionId===notionId);
+  if(!t)return;
+  const old=t.start;
+  t.start=fmtYMD(today);
+  renderMust();
+  try{
+    await updateInNotion(notionId,t);
+    setSyncStatus('ok','やった日を記録しました（'+new Date().toLocaleTimeString('ja-JP')+'）');
+  }catch(e){
+    t.start=old;
+    renderMust();
+    setSyncStatus('err','保存失敗: '+e.message);
+  }
 }
 
 function editMust(notionId){
   const t=mustItems.find(t=>t.notionId===notionId);
   const row=document.getElementById('must-'+notionId);
   if(!t||!row||row.querySelector('input[type=text]'))return;
-  const input=document.createElement('input');
-  input.type='text';
-  input.value=t.title;
-  let finished=false;
+  row.classList.add('editing');
+  row.innerHTML=`<input type="text" class="must-edit-when" list="when-list" placeholder="いつ"><input type="text" class="must-edit-title" placeholder="やること"><input type="date" class="must-edit-date" title="前回やった日"><button class="icon-btn" data-act="save" aria-label="保存" title="保存"><i class="ti ti-check"></i></button><button class="icon-btn" data-act="cancel" aria-label="キャンセル" title="キャンセル"><i class="ti ti-x"></i></button>`;
+  const whenInput=row.querySelector('.must-edit-when');
+  const titleInput=row.querySelector('.must-edit-title');
+  const dateInput=row.querySelector('.must-edit-date');
+  whenInput.value=t.desc||'';
+  titleInput.value=t.title;
+  dateInput.value=t.start||'';
   const finish=async(save)=>{
-    if(finished)return;
-    finished=true;
-    const v=input.value.trim();
-    if(save&&v&&v!==t.title){
-      const old=t.title;
-      t.title=v;
+    const v=titleInput.value.trim();
+    const when=whenInput.value.trim();
+    const last=dateInput.value;
+    if(!save||!v||(v===t.title&&when===(t.desc||'')&&last===(t.start||''))){renderMust();return;}
+    const old={title:t.title,desc:t.desc,start:t.start};
+    t.title=v; t.desc=when; t.start=last; t.due='';
+    renderMust();
+    try{
+      await updateInNotion(notionId,t);
+      setSyncStatus('ok','保存しました（'+new Date().toLocaleTimeString('ja-JP')+'）');
+    }catch(e){
+      t.title=old.title; t.desc=old.desc; t.start=old.start;
       renderMust();
-      try{
-        await updateInNotion(notionId,t);
-        setSyncStatus('ok','保存しました（'+new Date().toLocaleTimeString('ja-JP')+'）');
-      }catch(e){
-        t.title=old;
-        renderMust();
-        setSyncStatus('err','保存失敗: '+e.message);
-      }
-    }else{
-      renderMust();
+      setSyncStatus('err','保存失敗: '+e.message);
     }
   };
-  input.addEventListener('keydown',e=>{
+  const onKey=e=>{
     if(e.isComposing)return;
     if(e.key==='Enter')finish(true);
     else if(e.key==='Escape'){e.stopPropagation();finish(false);}
-  });
-  input.addEventListener('blur',()=>finish(true));
-  row.querySelector('span').replaceWith(input);
-  row.querySelector('.icon-btn').style.display='none';
-  input.focus();
-  input.select();
+  };
+  whenInput.addEventListener('keydown',onKey);
+  titleInput.addEventListener('keydown',onKey);
+  row.querySelector('[data-act="save"]').addEventListener('click',()=>finish(true));
+  row.querySelector('[data-act="cancel"]').addEventListener('click',()=>finish(false));
+  titleInput.focus();
+  titleInput.select();
 }
 
 async function addMust(){
   const input=document.getElementById('must-input');
+  const whenEl=document.getElementById('must-when');
   const title=input.value.trim();
   if(!title)return;
+  const when=whenEl.value.trim();
   input.value='';
+  whenEl.value='';
   try{
-    const data={title,desc:'',assignee:'',start:'',due:'',status:MUST_STATUS,recur:'なし',recurWeekday:'',recurMonth:'',recurWeek:''};
+    const data={title,desc:when,assignee:'',start:'',due:'',status:MUST_STATUS,recur:'なし',recurWeekday:'',recurMonth:'',recurWeek:''};
     const page=await createInNotion(data);
     mustItems.push({...data,id:page.id,notionId:page.id});
     renderMust();
@@ -627,13 +732,15 @@ async function addMust(){
   }catch(e){setSyncStatus('err','追加失敗: '+e.message);alert('追加に失敗しました。\n'+e.message);}
 }
 
-async function doneMust(notionId){
+async function deleteMust(notionId){
+  const t=mustItems.find(t=>t.notionId===notionId);
+  if(!t||!confirm('「'+t.title+'」を削除しますか？'))return;
   mustItems=mustItems.filter(t=>t.notionId!==notionId);
   renderMust();
   try{
     await deleteInNotion(notionId);
-    setSyncStatus('ok','完了しました（'+new Date().toLocaleTimeString('ja-JP')+'）');
-  }catch(e){setSyncStatus('err','更新失敗: '+e.message);}
+    setSyncStatus('ok','削除しました（'+new Date().toLocaleTimeString('ja-JP')+'）');
+  }catch(e){setSyncStatus('err','削除失敗: '+e.message);}
 }
 
 function handleRowClick(event, notionId){
@@ -752,7 +859,7 @@ async function saveTask(){
 
 document.getElementById('filter-status').addEventListener('input',()=>{renderStats();renderList();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
-document.getElementById('must-input').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing)addMust();});
+['must-input','must-when'].forEach(id=>document.getElementById(id).addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing)addMust();}));
 
 loadFromNotion();
 </script>
