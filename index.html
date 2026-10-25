@@ -137,15 +137,11 @@
     </div>
   </div>
   <div id="list-view">
-    <div class="toolbar">
-      <select id="filter-status"><option value="">すべてのステータス</option><option>未着手</option><option>進行中</option><option>完了</option></select>
-    </div>
     <div style="overflow-x:auto">
     <table>
       <thead><tr>
         <th onclick="sortBy('title')">タイトル <i class="ti ti-selector" style="font-size:11px"></i></th>
         <th onclick="sortBy('assignee')">担当者 <i class="ti ti-selector" style="font-size:11px"></i></th>
-        <th onclick="sortBy('status')">ステータス <i class="ti ti-selector" style="font-size:11px"></i></th>
         <th onclick="sortBy('start')">作業日 <i class="ti ti-selector" style="font-size:11px"></i></th>
         <th onclick="sortBy('due')">期限日 <i class="ti ti-selector" style="font-size:11px"></i></th>
         <th></th>
@@ -175,17 +171,8 @@
 
     <div class="form-row">
       <label>👤 担当者</label>
-      <input type="text" id="m-assignee" list="assignee-list" placeholder="名前を入力（過去の担当者から選べます）">
-      <datalist id="assignee-list"></datalist>
-    </div>
-
-    <div class="form-row">
-      <label>🔖 ステータス</label>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:2px">
-        <label class="status-radio" id="sr-todo"><input type="radio" name="m-status-r" value="未着手" checked> 未着手</label>
-        <label class="status-radio" id="sr-doing"><input type="radio" name="m-status-r" value="進行中"> 進行中</label>
-        <label class="status-radio" id="sr-done"><input type="radio" name="m-status-r" value="完了"> 完了</label>
-      </div>
+      <select id="m-assignee" onchange="onAssigneeChange()"></select>
+      <input type="text" id="m-assignee-new" placeholder="新しい担当者の名前" style="display:none;margin-top:6px">
     </div>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
@@ -248,7 +235,7 @@
         </select>
       </div>
 
-      <div style="font-size:11px;color:var(--text-secondary);margin-top:4px">完了にすると自動で次回分のタスクが作成されます</div>
+      <div style="font-size:11px;color:var(--text-secondary);margin-top:4px">チェックを入れて完了にすると自動で次回分のタスクが作成されます</div>
     </div>
 
     </div>
@@ -338,13 +325,29 @@ function pageToTask(page){
 }
 
 // ====== Notionからデータ読み込み ======
+async function queryAllPages(useFilter){
+  let results=[], cursor=null, pages=0;
+  do{
+    const body={page_size:100};
+    if(useFilter) body.filter={property:'ステータス',select:{does_not_equal:'完了'}};
+    if(cursor) body.start_cursor=cursor;
+    const data=await notionRequest(`/databases/37ee4022213780cdb770d787ccf00af1/query`,'POST',body);
+    results=results.concat(data.results);
+    cursor=data.has_more?data.next_cursor:null;
+    pages++;
+  }while(cursor&&pages<20);
+  return results;
+}
+
 async function loadFromNotion(){
   setSyncStatus('loading','Notionに接続中...');
   try {
-    const data = await notionRequest(`/databases/37ee4022213780cdb770d787ccf00af1/query`,'POST',{page_size:100});
-    const all = data.results.filter(p=>!p.archived).map(pageToTask);
+    let results;
+    try{ results=await queryAllPages(true); }
+    catch(e){ results=await queryAllPages(false); }
+    const all = results.filter(p=>!p.archived).map(pageToTask);
     mustItems = all.filter(t=>t.status===MUST_STATUS);
-    tasks = all.filter(t=>t.status!==MUST_STATUS);
+    tasks = all.filter(t=>t.status!==MUST_STATUS&&t.status!=='完了');
     setSyncStatus('ok',`${tasks.length}件のタスクを読み込みました（最終更新: ${new Date().toLocaleTimeString('ja-JP')}）`);
     render();
   } catch(e){
@@ -466,7 +469,7 @@ function getAssignees(){return[...new Set(tasks.map(t=>t.assignee).filter(Boolea
 
 function assigneesByCount(){
   const counts={};
-  tasks.forEach(t=>{if(t.assignee)counts[t.assignee]=(counts[t.assignee]||0)+1;});
+  tasks.filter(t=>t.status!=='完了').forEach(t=>{if(t.assignee)counts[t.assignee]=(counts[t.assignee]||0)+1;});
   return Object.keys(counts).sort((a,b)=>counts[b]-counts[a]);
 }
 
@@ -481,42 +484,33 @@ function renderChips(){
 function setAssignee(a){activeAssignee=a;renderChips();renderStats();renderList();}
 
 function getFiltered(){
-  const fs=document.getElementById('filter-status')?.value||'';
   return tasks.filter(t=>{
+    if(t.status==='完了')return false;
     if(activeAssignee&&t.assignee!==activeAssignee)return false;
-    if(fs&&t.status!==fs)return false;
     return true;
   }).sort((a,b)=>sortKey?(sortAsc?(a[sortKey]||'').localeCompare(b[sortKey]||''):(b[sortKey]||'').localeCompare(a[sortKey]||'')):0);
 }
 
 function renderStats(){
-  const src=activeAssignee?tasks.filter(t=>t.assignee===activeAssignee):tasks;
-  const total=src.length,todo=src.filter(t=>t.status==='未着手').length,
-    doing=src.filter(t=>t.status==='進行中').length,done=src.filter(t=>t.status==='完了').length,
-    over=src.filter(t=>{const d=parseDate(t.due);return d&&d<today&&t.status!=='完了';}).length;
+  const src=(activeAssignee?tasks.filter(t=>t.assignee===activeAssignee):tasks).filter(t=>t.status!=='完了');
+  const over=src.filter(t=>{const d=parseDate(t.due);return d&&d<today;}).length;
   document.getElementById('stats').innerHTML=`
-    <div class="stat-card"><div class="stat-label">${activeAssignee?activeAssignee+'の':''}合計</div><div class="stat-num">${total}</div></div>
-    <div class="stat-card"><div class="stat-label">未着手</div><div class="stat-num">${todo}</div></div>
-    <div class="stat-card"><div class="stat-label">進行中</div><div class="stat-num">${doing}</div></div>
-    <div class="stat-card"><div class="stat-label">完了</div><div class="stat-num">${done}</div></div>
+    <div class="stat-card"><div class="stat-label">${activeAssignee?activeAssignee+'の':''}残り</div><div class="stat-num">${src.length}</div></div>
     <div class="stat-card"><div class="stat-label">期限超過</div><div class="stat-num" style="color:${over>0?'#A32D2D':'inherit'}">${over}</div></div>`;
 }
 
 function taskRow(t){
-  const d=parseDate(t.due),isOver=d&&d<today&&t.status!=='完了';
+  const d=parseDate(t.due),isOver=d&&d<today;
   const aColor=assigneeColor(t.assignee);
-  return `<tr style="cursor:pointer;${t.status==='完了'?'opacity:0.4;':''}" onclick="handleRowClick(event,'${t.notionId}')">
-    <td style="max-width:180px"><div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${t.title}">${t.recur&&t.recur!=='なし'?`<i class="ti ti-repeat" style="font-size:12px;color:var(--text-secondary);margin-right:3px" title="${t.recur}"></i>`:''}${t.status==='完了'?`<s>${t.title}</s>`:t.title}</div>
-      ${t.desc?`<div style="font-size:12px;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;max-width:160px">${t.desc}</div>`:''}
-    </td>
+  return `<tr style="cursor:pointer" onclick="handleRowClick(event,'${t.notionId}')">
+    <td style="max-width:200px"><div style="display:flex;align-items:center;gap:8px">
+      <input type="checkbox" title="完了にする" onchange="completeTask('${t.notionId}')" style="width:17px;height:17px;flex-shrink:0;cursor:pointer">
+      <div style="min-width:0"><div style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${t.title}">${t.recur&&t.recur!=='なし'?`<i class="ti ti-repeat" style="font-size:12px;color:var(--text-secondary);margin-right:3px" title="${t.recur}"></i>`:''}${t.title}</div>
+      ${t.desc?`<div style="font-size:12px;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.desc}</div>`:''}</div>
+    </div></td>
     <td style="white-space:nowrap">
       ${t.assignee?`<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:${aColor};flex-shrink:0"></span>${t.assignee}</span>`:'—'}
     </td>
-    <td onclick="event.stopPropagation()"><select onchange="changeStatus('${t.notionId}',this.value)">
-      <option ${t.status==='未着手'?'selected':''}>未着手</option>
-      <option ${t.status==='進行中'?'selected':''}>進行中</option>
-      <option ${t.status==='完了'?'selected':''}>完了</option>
-    </select></td>
     <td style="white-space:nowrap;color:var(--text-secondary)">${fmtDisp(t.start)}</td>
     <td style="white-space:nowrap" class="${isOver?'overdue':''}">${isOver?'⚠ ':''}${fmtDisp(t.due)}</td>
     <td onclick="event.stopPropagation()">
@@ -527,7 +521,7 @@ function taskRow(t){
 
 function sectionHeader(label, count, color){
   return `<tr>
-    <td colspan="6" style="padding:10px 10px 6px;font-size:12px;font-weight:600;color:${color};background:var(--bg);border-bottom:2px solid ${color};letter-spacing:0.05em">
+    <td colspan="5" style="padding:10px 10px 6px;font-size:12px;font-weight:600;color:${color};background:var(--bg);border-bottom:2px solid ${color};letter-spacing:0.05em">
       ${label} <span style="font-weight:400;opacity:0.7">(${count})</span>
     </td>
   </tr>`;
@@ -535,45 +529,32 @@ function sectionHeader(label, count, color){
 
 function renderList(){
   const rows=getFiltered();
-  if(rows.length===0){
-    document.getElementById('tbody').innerHTML=`<tr><td colspan="6" class="empty"><i class="ti ti-mood-empty" style="font-size:24px;display:block;margin-bottom:6px"></i>タスクがありません</td></tr>`;
-    return;
-  }
   // 作業日（start）を優先、なければ期限日（due）で判定
   const getKey = t => parseDate(t.start) || parseDate(t.due);
-  const tomorrow = daysFromToday(1);
-  const dayAfterTomorrow = daysFromToday(2);
-  const todayTasks    = rows.filter(t=>{ const d=getKey(t); return d&&d.getTime()===today.getTime()&&t.status!=='完了'; });
-  const tomorrowTasks = rows.filter(t=>{ const d=getKey(t); return d&&d.getTime()===tomorrow.getTime()&&t.status!=='完了'; });
-  const dayAfterTomorrowTasks = rows.filter(t=>{ const d=getKey(t); return d&&d.getTime()===dayAfterTomorrow.getTime()&&t.status!=='完了'; });
-  const overdueTasks  = rows.filter(t=>{ const d=getKey(t); return d&&d<today&&t.status!=='完了'; });
-  const futureTasks   = rows.filter(t=>{ const d=getKey(t); return !d||(d>dayAfterTomorrow&&t.status!=='完了'); }).sort((a,b)=>{const da=getKey(a),db=getKey(b);if(!da&&!db)return 0;if(!da)return 1;if(!db)return -1;return da-db;});
-  const doneTasks     = rows.filter(t=> t.status==='完了');
+  const wk=['日','月','火','水','木','金','土'];
+  const weekEnd=daysFromToday(6);
+  const overdueTasks=rows.filter(t=>{const d=getKey(t);return d&&d<today;});
+  const laterTasks=rows.filter(t=>{const d=getKey(t);return !d||d>weekEnd;})
+    .sort((a,b)=>{const da=getKey(a),db=getKey(b);if(!da&&!db)return 0;if(!da)return 1;if(!db)return -1;return da-db;});
 
   let html='';
   if(overdueTasks.length){
     html += sectionHeader('⚠ 期限超過', overdueTasks.length, '#A32D2D');
     html += overdueTasks.map(taskRow).join('');
   }
-  if(todayTasks.length){
-    html += sectionHeader('📅 今日', todayTasks.length, '#1A6FD4');
-    html += todayTasks.map(taskRow).join('');
+  const heads=['📅 今日','🌅 明日','📆 明後日'];
+  for(let i=0;i<7;i++){
+    const day=daysFromToday(i);
+    const list=rows.filter(t=>{const d=getKey(t);return d&&d.getTime()===day.getTime();});
+    const dateLabel=`${day.getMonth()+1}/${day.getDate()}(${wk[day.getDay()]})`;
+    const label=(i<3?heads[i]:'📆')+' '+dateLabel;
+    const color=i===0?'#1A6FD4':(i===1?'#5B9BD5':'#7CA9D9');
+    html += sectionHeader(label, list.length, color);
+    html += list.map(taskRow).join('');
   }
-  if(tomorrowTasks.length){
-    html += sectionHeader('🌅 明日', tomorrowTasks.length, '#5B9BD5');
-    html += tomorrowTasks.map(taskRow).join('');
-  }
-  if(dayAfterTomorrowTasks.length){
-    html += sectionHeader('📆 明後日', dayAfterTomorrowTasks.length, '#7CA9D9');
-    html += dayAfterTomorrowTasks.map(taskRow).join('');
-  }
-  if(futureTasks.length){
-    html += sectionHeader('📋 今後の予定', futureTasks.length, 'var(--text-secondary)');
-    html += futureTasks.map(taskRow).join('');
-  }
-  if(doneTasks.length){
-    html += sectionHeader('✓ 完了', doneTasks.length, '#3B6D11');
-    html += doneTasks.map(taskRow).join('');
+  if(laterTasks.length){
+    html += sectionHeader('📋 それ以降・日付なし', laterTasks.length, 'var(--text-secondary)');
+    html += laterTasks.map(taskRow).join('');
   }
   document.getElementById('tbody').innerHTML = html;
 }
@@ -756,27 +737,31 @@ async function deleteMust(notionId){
 }
 
 function handleRowClick(event, notionId){
-  if(event.target.closest('select')||event.target.closest('button')) return;
+  if(event.target.closest('select,button,input')) return;
   openModal(notionId);
 }
 
 function render(){renderStats();renderChips();renderList();renderMust();}
 function sortBy(k){if(sortKey===k)sortAsc=!sortAsc;else{sortKey=k;sortAsc=true;}renderList();}
 
-async function changeStatus(notionId,v){
+async function completeTask(notionId){
   const t=tasks.find(t=>t.notionId===notionId);
   if(!t)return;
-  const wasNotDone = t.status!=='完了';
-  t.status=v;
+  const old=t.status;
+  t.status='完了';
   render();
   try{
     await updateInNotion(notionId,t);
-    if(v==='完了' && wasNotDone && t.recur && t.recur!=='なし'){
+    if(t.recur && t.recur!=='なし'){
       await createNextRecurrence(t);
       render();
     }
-    setSyncStatus('ok','保存しました（'+new Date().toLocaleTimeString('ja-JP')+'）');
-  }catch(e){setSyncStatus('err','保存失敗: '+e.message);}
+    setSyncStatus('ok','完了にしました（'+new Date().toLocaleTimeString('ja-JP')+'）');
+  }catch(e){
+    t.status=old;
+    render();
+    setSyncStatus('err','保存失敗: '+e.message);
+  }
 }
 
 async function deleteTask(notionId){
@@ -810,51 +795,63 @@ function openModal(notionId){
   document.getElementById('modal-title').textContent=notionId?'✏️ タスクを編集':'✏️ タスクを追加';
   document.getElementById('m-title').value=t.title||'';
   document.getElementById('m-desc').value=t.desc||'';
-  document.getElementById('m-assignee').value=t.assignee||'';
+  fillAssigneeSelect(t.assignee||'');
   document.getElementById('m-start').value=t.start||'';
   document.getElementById('m-due').value=t.due||'';
-  // ステータス
-  const status=t.status||'未着手';
-  document.querySelectorAll('input[name="m-status-r"]').forEach(r=>r.checked=(r.value===status));
   // 繰り返し
   document.getElementById('m-recur').value = t.recur||'なし';
   document.getElementById('m-recur-week').value = (t.recurWeek!=null && t.recurWeek!=='') ? t.recurWeek : '1';
   document.getElementById('m-recur-weekday').value = (t.recurWeekday!=null && t.recurWeekday!=='') ? t.recurWeekday : String(today.getDay());
   document.getElementById('m-recur-month').value = (t.recurMonth!=null && t.recurMonth!=='') ? t.recurMonth : String(today.getMonth()+1);
   updateRecurDetail();
-  const dl=document.getElementById('assignee-list');
-  dl.innerHTML=getAssignees().map(a=>`<option value="${a}">`).join('');
   document.getElementById('modal-overlay').classList.add('open');
   setTimeout(()=>document.getElementById('m-title').focus(),100);
+}
+function fillAssigneeSelect(current){
+  const sel=document.getElementById('m-assignee');
+  const names=assigneesByCount();
+  if(current&&!names.includes(current))names.push(current);
+  sel.innerHTML='<option value="">（未設定）</option>'
+    +names.map(a=>`<option value="${a.replace(/"/g,'&quot;')}">${a.replace(/</g,'&lt;')}</option>`).join('')
+    +'<option value="__new__">＋ 新しい担当者を追加…</option>';
+  sel.value=current||'';
+  const ni=document.getElementById('m-assignee-new');
+  ni.value='';
+  ni.style.display='none';
+}
+function onAssigneeChange(){
+  const sel=document.getElementById('m-assignee');
+  const ni=document.getElementById('m-assignee-new');
+  const isNew=sel.value==='__new__';
+  ni.style.display=isNew?'':'none';
+  if(isNew)ni.focus();
 }
 function closeModal(){document.getElementById('modal-overlay').classList.remove('open');}
 
 async function saveTask(){
   const title=document.getElementById('m-title').value.trim();
   if(!title){alert('タイトルを入力してください');document.getElementById('m-title').focus();return;}
-  const statusEl=document.querySelector('input[name="m-status-r"]:checked');
   const recurValue = document.getElementById('m-recur').value;
   const isNth = (recurValue==='毎月第◯曜日'||recurValue==='毎年第◯曜日');
+  const sel=document.getElementById('m-assignee');
+  const assignee = sel.value==='__new__' ? document.getElementById('m-assignee-new').value.trim() : sel.value;
+  const prev = editId ? tasks.find(t=>t.notionId===editId) : null;
   const data={
     title,desc:document.getElementById('m-desc').value.trim(),
-    assignee:document.getElementById('m-assignee').value.trim(),
+    assignee,
     start:document.getElementById('m-start').value,due:document.getElementById('m-due').value,
-    status:statusEl?statusEl.value:'未着手',
+    status:prev?(prev.status||'未着手'):'未着手',
     recur:recurValue,
     recurWeek:isNth?document.getElementById('m-recur-week').value:'',
     recurWeekday:isNth?document.getElementById('m-recur-weekday').value:'',
     recurMonth:(recurValue==='毎年第◯曜日')?document.getElementById('m-recur-month').value:'',
   };
-  const prevStatus = editId ? (tasks.find(t=>t.notionId===editId)||{}).status : null;
   closeModal();
   document.getElementById('saving-overlay').classList.add('show');
   try{
-    if(editId){
+    if(editId&&prev){
       await updateInNotion(editId,data);
-      Object.assign(tasks.find(t=>t.notionId===editId),data);
-      if(data.status==='完了' && prevStatus!=='完了' && data.recur && data.recur!=='なし'){
-        await createNextRecurrence(data);
-      }
+      Object.assign(prev,data);
     }else{
       const page=await createInNotion(data);
       tasks.push({...data,id:page.id,notionId:page.id});
@@ -869,7 +866,6 @@ async function saveTask(){
   }
 }
 
-document.getElementById('filter-status').addEventListener('input',()=>{renderStats();renderList();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 ['must-input','must-when'].forEach(id=>document.getElementById(id).addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing)addMust();}));
 
